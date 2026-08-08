@@ -4,7 +4,7 @@
   var BACK = 461, PLAY = 415, PAUSE = 19, STOP = 413, RED = 403, GREEN = 404;
   var APP_NAME = 'XtreamlyTV';
   var APP_ID = 'com.github.xtreamlytv.webos';
-  var APP_VERSION = '0.5.1';
+  var APP_VERSION = '0.6.0';
 
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>'"]/g, function (char) {
@@ -19,6 +19,8 @@
     else if (name === 'tv') body = '<path d="m8.2 2.5 3.8 3 3.8-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="5.5" width="18" height="13" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 21h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17.5" cy="12" r="1" fill="currentColor"/>';
     else if (name === 'popcorn') body = '<path d="M6.3 9.2h11.4L16.2 21H7.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.3 9.5 10.2 21M14.7 9.5 13.8 21" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".75"/><path d="M6.7 9.2a3.1 3.1 0 0 1 1.6-5.8 3.3 3.3 0 0 1 6.2.4 3 3 0 0 1 3.1 5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
     else if (name === 'play') body = '<rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m10 8 6.5 4-6.5 4z" fill="currentColor"/>';
+    else if (name === 'film') body = '<rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 4v16M17 4v16M3 8h4M3 16h4M17 8h4M17 16h4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10 9 5 3-5 3z" fill="currentColor"/>';
+    else if (name === 'layers') body = '<path d="m12 3 9 5-9 5-9-5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
     else if (name === 'heart') body = '<path d="M12 20.2 4.3 12.8C-.1 8.7 5.8 2.4 12 7.2c6.2-4.8 12.1 1.5 7.7 5.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
     else if (name === 'plus') body = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
     else if (name === 'folder') body = '<path d="M3 6.5h6l2 2h10v10.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>';
@@ -26,7 +28,7 @@
     else if (name === 'trophy') body = '<path d="M8 4h8v4.5c0 3-1.7 5.2-4 5.2s-4-2.2-4-5.2zM10 14v3h4v-3M8 20h8M6.5 6H4v2.5A3.5 3.5 0 0 0 7.5 12M17.5 6H20v2.5a3.5 3.5 0 0 1-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>';
     else if (name === 'smile') body = '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 10h.01M15.5 10h.01M8.5 14.5c1.9 2 5.1 2 7 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
     else if (name === 'settings') body = '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a8 8 0 0 0 .1-6l2-1.2-2-3.4-2.1 1.2a8.4 8.4 0 0 0-5.2-2.1L12 1H8l-.2 2.5a8.4 8.4 0 0 0-3.2 2.1L2.5 4.4.5 7.8l2 1.2a8 8 0 0 0 .1 6l-2.1 1.2 2 3.4 2.2-1.2a8.2 8.2 0 0 0 5.1 2.1L8 23h4l.2-2.5a8.2 8.2 0 0 0 5.1-2.1l2.2 1.2 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>';
-    return '<svg class="' + className + '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + body + '</svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" class="' + className + '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + body + '</svg>';
   }
 
   function initials(name) {
@@ -205,13 +207,25 @@
     favoriteGroupId: 'all',
     favoriteEditor: null,
     favoriteDeleteArmed: false,
+    favoriteGridItems: [],
+    favoriteItemManager: null,
+    favoriteEditorReturnMode: 'manager',
+    navigationStates: {},
+    pendingNavigationRestore: null,
+    playerReturnState: null,
+    navigationRememberTimer: null,
+    navigationStorageKey: 'xtreamlytv.navigation.v1',
+    pendingCatalogFirstFocus: { live:false, movies:false, series:false },
+    pendingFavoriteFirstFocus: false,
 
     init: function () {
       this.applyTheme(this.state.settings.theme || 'teal');
+      this.navigationStates = this.loadNavigationStates();
       this.scale();
       window.addEventListener('resize', this.scale.bind(this));
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
+      document.addEventListener('focusin', this.onNavigationFocus.bind(this));
       if (window.location.search.indexOf('demo=1') >= 0) this.startDemo();
       else if (this.state.credentials) this.connectSaved();
       else this.renderLogin();
@@ -248,12 +262,174 @@
       this.toastTimer = setTimeout(function () { self.toastEl.classList.remove('show'); }, 2600);
     },
 
+    loadNavigationStates: function () {
+      try {
+        var raw = window.sessionStorage && window.sessionStorage.getItem(this.navigationStorageKey);
+        var parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch (error) { return {}; }
+    },
+
+    persistNavigationStates: function () {
+      try {
+        if (window.sessionStorage) window.sessionStorage.setItem(this.navigationStorageKey, JSON.stringify(this.navigationStates || {}));
+      } catch (error) { /* session storage unavailable */ }
+    },
+
+    navigationAttributeSelector: function (name, value) {
+      return '[' + name + '="' + String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]';
+    },
+
+    navigationFocusDescriptor: function (element) {
+      if (!element || element === document.body || !element.closest) return null;
+      var target = element.closest('.focusable') || element;
+      var virtual = target.closest('[data-virtual-index]');
+      var content = target.closest('[data-content-type][data-content-id]');
+      if (virtual) {
+        return {
+          kind:'virtual',
+          index:Number(virtual.dataset.virtualIndex || 0),
+          contentType:content && content.dataset.contentType || '',
+          contentId:content && content.dataset.contentId || '',
+          itemKey:virtual.dataset.favoriteItemKey || virtual.dataset.groupItemKey || ''
+        };
+      }
+      if (content) return { kind:'content', contentType:content.dataset.contentType, contentId:content.dataset.contentId };
+      if (target.hasAttribute('data-episode-id')) return { kind:'attribute', name:'data-episode-id', value:target.dataset.episodeId };
+      if (target.id) return { kind:'id', value:target.id };
+      var attributes = [
+        'data-favorite-group', 'data-catalog-category', 'data-shortcut', 'data-view', 'data-season',
+        'data-manager-edit', 'data-manager-items', 'data-manager-visibility', 'data-manager-group',
+        'data-item-manager-key', 'data-editor-favorite-filter', 'data-group-item-key'
+      ];
+      var i;
+      for (i = 0; i < attributes.length; i += 1) {
+        if (target.hasAttribute(attributes[i])) return { kind:'attribute', name:attributes[i], value:target.getAttribute(attributes[i]) };
+      }
+      return null;
+    },
+
+    captureNavigationState: function () {
+      var scrollables = Array.prototype.slice.call(document.querySelectorAll(
+        '.scroll-view,.virtual-grid-host,.favorite-groups-row,.category-list,.favorite-manager-list,.favorite-item-manager-list,.favorite-editor-settings'
+      ));
+      return {
+        view:this.currentView,
+        favoriteMode:this.favoriteMode,
+        favoriteGroupId:this.favoriteGroupId,
+        favoriteFilter:this.favoriteFilter,
+        activeCategory:Object.assign({}, this.activeCategory),
+        searchText:Object.assign({}, this.searchText),
+        focus:this.navigationFocusDescriptor(document.activeElement),
+        scrolls:scrollables.map(function (element, index) {
+          return { index:index, id:element.id || '', top:element.scrollTop || 0, left:element.scrollLeft || 0 };
+        })
+      };
+    },
+
+    rememberNavigationState: function (snapshot) {
+      if (this.playerOpen || this.detail || !document.querySelector('.shell')) return;
+      snapshot = snapshot || this.captureNavigationState();
+      if (!snapshot || !snapshot.view) return;
+      this.navigationStates[snapshot.view] = snapshot;
+      this.persistNavigationStates();
+    },
+
+    onNavigationFocus: function (event) {
+      if (this.playerOpen || this.detail || !document.querySelector('.shell')) return;
+      var target = event && event.target;
+      if (target && target.closest && target.closest('.nav-item')) return;
+      clearTimeout(this.navigationRememberTimer);
+      this.rememberNavigationState();
+    },
+
+    prepareNavigationState: function (snapshot) {
+      if (!snapshot) return;
+      if (snapshot.activeCategory) this.activeCategory = Object.assign({}, this.activeCategory, snapshot.activeCategory);
+      if (snapshot.searchText) this.searchText = Object.assign({}, this.searchText, snapshot.searchText);
+      if (snapshot.favoriteMode) this.favoriteMode = snapshot.favoriteMode;
+      if (snapshot.favoriteGroupId !== undefined) this.favoriteGroupId = snapshot.favoriteGroupId;
+      if (snapshot.favoriteFilter) this.favoriteFilter = snapshot.favoriteFilter;
+    },
+
+    restoreNavigationScrolls: function (snapshot) {
+      if (!snapshot || !Array.isArray(snapshot.scrolls)) return;
+      var scrollables = Array.prototype.slice.call(document.querySelectorAll(
+        '.scroll-view,.virtual-grid-host,.favorite-groups-row,.category-list,.favorite-manager-list,.favorite-item-manager-list,.favorite-editor-settings'
+      ));
+      snapshot.scrolls.forEach(function (saved) {
+        var element = saved.id ? document.getElementById(saved.id) : scrollables[saved.index];
+        if (!element) return;
+        element.scrollTop = Number(saved.top || 0);
+        element.scrollLeft = Number(saved.left || 0);
+      });
+    },
+
+    restoreNavigationFocus: function (snapshot) {
+      var descriptor = snapshot && snapshot.focus;
+      if (!descriptor) return false;
+      var target = null;
+      var index = -1;
+      if (descriptor.kind === 'virtual' && this.virtualGrid && this.virtualGrid.items && this.virtualGrid.items.length) {
+        if (descriptor.contentType && descriptor.contentId) {
+          index = this.virtualGrid.items.findIndex(function (item) {
+            var type = typeOf(item);
+            return type === descriptor.contentType && String(idOf(item, type)) === String(descriptor.contentId);
+          });
+        }
+        if (index < 0 && descriptor.itemKey) {
+          index = this.virtualGrid.items.findIndex(function (item) { return App.favoriteKeyForItem(item) === descriptor.itemKey; });
+        }
+        if (index < 0) index = Math.max(0, Math.min(this.virtualGrid.items.length - 1, Number(descriptor.index || 0)));
+        this.virtualGrid.focusIndex(index);
+        return true;
+      }
+      if (descriptor.kind === 'content') {
+        target = document.querySelector(this.navigationAttributeSelector('data-content-type', descriptor.contentType) + this.navigationAttributeSelector('data-content-id', descriptor.contentId));
+      } else if (descriptor.kind === 'id') target = document.getElementById(descriptor.value);
+      else if (descriptor.kind === 'attribute') target = document.querySelector(this.navigationAttributeSelector(descriptor.name, descriptor.value));
+      if (!target) return false;
+      try { target.focus({ preventScroll:true }); } catch (error) { target.focus(); }
+      return document.activeElement === target;
+    },
+
+    applyPendingNavigationRestore: function () {
+      var snapshot = this.pendingNavigationRestore;
+      if (!snapshot || snapshot.view !== this.currentView || this.playerOpen) return false;
+      this.restoreNavigationScrolls(snapshot);
+      var restored = this.restoreNavigationFocus(snapshot);
+      if (!restored) return false;
+      this.restoreNavigationScrolls(snapshot);
+      this.pendingNavigationRestore = null;
+      this.navigationStates[this.currentView] = snapshot;
+      this.persistNavigationStates();
+      return true;
+    },
+
+    queueNavigationRestore: function (snapshot) {
+      if (!snapshot) return;
+      var self = this;
+      this.pendingNavigationRestore = snapshot;
+      [0, 45, 140, 420, 900].forEach(function (delay) {
+        setTimeout(function () { self.applyPendingNavigationRestore(); }, delay);
+      });
+    },
+
+    closeDetail: function () {
+      var detail = this.detail;
+      if (!detail) return;
+      var snapshot = detail.returnState || this.navigationStates[detail.returnView];
+      var returnView = detail.returnView || snapshot && snapshot.view || this.currentView;
+      this.detail = null;
+      this.renderShell(returnView, snapshot);
+    },
+
     renderLogin: function (error) {
       this.destroyVirtualGrid();
       var credentials = this.state.credentials || {};
       var settings = this.state.settings || {};
       this.root.innerHTML = '<section class="screen login-screen">' +
-        '<div class="login-brand"><div class="brand-lockup"><img src="assets/largeIcon.png" alt="XtreamlyTV"><div><h1>XtreamlyTV</h1><span>Live · Movies · Series</span></div></div>' +
+        '<div class="login-brand"><div class="brand-lockup"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"><span>Live · Movies · Series</span></div>' +
         '<p>A fast, remote-first Xtream player designed for large provider libraries and LG webOS televisions.</p>' +
         '<div class="feature-pills"><span class="feature-pill">Virtualized catalogs</span><span class="feature-pill">Lazy loading</span><span class="feature-pill">Stream fallback</span><span class="feature-pill">Resume playback</span><span class="feature-pill">No tracking</span></div></div>' +
         '<form id="loginForm" class="login-card">' +
@@ -349,7 +525,7 @@
         self.activeCategory.movies = self.firstCategoryId('movies');
         self.activeCategory.series = self.firstCategoryId('series');
         self.demo = false;
-        self.renderShell('home');
+        self.renderShell('home', self.navigationStates.home || null);
         if (!self.seriesCategories.length) {
           setTimeout(function () { self.ensureSeriesDiscovery(true); }, 250);
         }
@@ -393,7 +569,7 @@
       this.storeCache('live', 'all', this.normalizeCatalogItems('live', XtreamlyTVMock.liveStreams));
       this.storeCache('movies', 'all', this.normalizeCatalogItems('movies', XtreamlyTVMock.vodStreams));
       this.storeCache('series', 'all', this.normalizeCatalogItems('series', XtreamlyTVMock.series));
-      this.renderShell('home');
+      this.renderShell('home', this.navigationStates.home || null);
     },
 
     categoriesFor: function (kind) {
@@ -540,10 +716,11 @@
       return this.catalogPromises[kind][category];
     },
 
-    renderShell: function (view) {
+    renderShell: function (view, restoreState) {
       this.destroyVirtualGrid();
       this.destroyCategoryRail();
       this.currentView = view || this.currentView;
+      if (restoreState) this.prepareNavigationState(restoreState);
       this.root.classList.remove('player-active');
       document.body.classList.remove('video-mode');
       document.documentElement.classList.remove('video-mode');
@@ -563,6 +740,7 @@
       clearInterval(this.clockInterval);
       this.clockInterval = setInterval(this.updateClock.bind(this), 30000);
       this.renderView();
+      if (restoreState) this.queueNavigationRestore(restoreState);
     },
 
     sidebarHtml: function () {
@@ -574,7 +752,7 @@
         ['favorites', uiIcon('heart', 'nav-svg'), 'Favorites'],
         ['settings', uiIcon('settings', 'nav-svg'), 'Settings']
       ];
-      return '<aside class="sidebar"><div class="logo"><img src="assets/icon.png" alt="X"><span>treamlyTV</span></div><nav class="nav-list">' +
+      return '<aside class="sidebar"><div class="logo"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"></div><nav class="nav-list">' +
         items.map(function (item) {
           return '<button class="nav-item focusable ' + (App.currentView === item[0] ? 'active' : '') + '" data-view="' + item[0] + '"><span class="nav-icon">' + item[1] + '</span>' + item[2] + '</button>';
         }).join('') + '</nav></aside>';
@@ -585,14 +763,17 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-view]'), function (button) {
         button.addEventListener('click', function () {
           self.detail = null;
-          if (button.dataset.view === 'favorites') {
+          var targetView = button.dataset.view;
+          var restoreState = self.navigationStates[targetView] || null;
+          if (targetView === 'favorites' && !restoreState) {
             self.favoriteMode = 'home';
             self.favoriteFilter = 'all';
             self.favoriteGroupId = 'all';
             self.favoriteEditor = null;
+            self.favoriteItemManager = null;
           }
-          self.currentView = button.dataset.view;
-          self.renderShell(self.currentView);
+          self.currentView = targetView;
+          self.renderShell(targetView, restoreState);
         });
       });
     },
@@ -709,10 +890,9 @@
         '</p><div class="hero-actions">' + (featured ? '<button class="primary-button focusable" id="heroPlay">▶ ' + (featuredType === 'live' ? 'Watch now' : 'Open details') + '</button>' : '') +
         '<button class="secondary-button focusable" id="browseAll">Browse Live TV</button></div></div></div>' +
         this.libraryShortcutsHtml() +
-        (recent.length ? this.contentSection('Continue watching', recent.slice(0, 8)) : '') +
-        (livePreview.length ? this.channelSection('Recently watched channels', livePreview) : '') +
-        (moviePreview.length ? this.posterSection('Recently watched movies', moviePreview, 'movie') : '') +
-        (seriesPreview.length ? this.posterSection('Recently watched series', seriesPreview, 'series') : '') +
+        (livePreview.length ? this.channelSection('Continue watching Live TV', livePreview) : '') +
+        (moviePreview.length ? this.posterSection('Continue watching Movies', moviePreview, 'movie') : '') +
+        (seriesPreview.length ? this.posterSection('Continue watching Series', seriesPreview, 'series') : '') +
         '</div>';
       if (featured && document.getElementById('heroPlay')) {
         document.getElementById('heroPlay').addEventListener('click', function () { self.openContent(featured, featuredType); });
@@ -797,7 +977,8 @@
       return '<button class="poster-card focusable" data-content-type="' + type + '" data-content-id="' + escapeHtml(id) + '">' +
         (favorite ? '<span class="favorite-badge poster-favorite">♥</span>' : '') + poster(item, type) +
         '<div class="poster-copy"><strong>' + escapeHtml(titleOf(item)) + '</strong><span>' + escapeHtml(yearOf(item) || (type === 'series' ? 'Series' : 'Movie')) + (ratingOf(item) ? ' · ★ ' + escapeHtml(ratingOf(item)) : '') + '</span></div>' +
-        (percent ? '<div class="poster-progress"><i style="width:' + percent + '%"></i></div>' : '') + '</button>';
+        (percent ? '<div class="poster-progress"><i style="width:' + percent + '%"></i></div>' : '') +
+        '<span class="poster-focus-ring" aria-hidden="true"></span></button>';
     },
 
     channelTileHtml: function (channel) {
@@ -863,6 +1044,8 @@
           var category = String(item.id);
           self.activeCategory[kind] = category;
           self.searchText[kind] = '';
+          self.pendingCatalogFirstFocus[kind] = true;
+          self.pendingNavigationRestore = null;
           self.renderCatalog(kind);
         }
       });
@@ -873,6 +1056,7 @@
         this.ensureSeriesDiscovery(false);
       }
       var config = this.catalogConfig(kind);
+      var focusFirstRequested = !!this.pendingCatalogFirstFocus[kind];
       var categories = this.categoriesFor(kind).filter(function (category) {
         return category && category.category_id !== undefined && category.category_id !== null && String(category.category_id) !== 'all';
       });
@@ -906,7 +1090,7 @@
       } else {
         this.loadCategory(kind, active).catch(function () { /* rendered by loadCategory */ });
       }
-      if (this.categoryRail && active) this.categoryRail.focusActive();
+      if (this.categoryRail && active && !focusFirstRequested) this.categoryRail.focusActive();
     },
 
     showCatalogLoading: function (kind, message) {
@@ -955,6 +1139,10 @@
       gridElement.innerHTML = '';
       if (!items.length) {
         gridElement.innerHTML = '<div class="empty-state grid-empty">No ' + config.plural + ' match this category or search.</div>';
+        if (this.pendingCatalogFirstFocus[kind]) {
+          this.pendingCatalogFirstFocus[kind] = false;
+          if (this.categoryRail) this.categoryRail.focusActive();
+        }
         return;
       }
       var self = this;
@@ -974,6 +1162,13 @@
         }
       });
       this.virtualGrid.setItems(items);
+      if (this.pendingCatalogFirstFocus[kind]) {
+        this.pendingCatalogFirstFocus[kind] = false;
+        this.pendingNavigationRestore = null;
+        this.virtualGrid.focusIndex(0);
+      } else {
+        this.applyPendingNavigationRestore();
+      }
     },
 
     destroyVirtualGrid: function () {
@@ -993,7 +1188,9 @@
     openMovieDetail: function (movie) {
       var self = this;
       var returnView = this.currentView === 'favorites' ? 'favorites' : 'movies';
-      this.detail = { type: 'movie', item: movie, info: null, loading: true, error: '', returnView:returnView };
+      var returnState = this.captureNavigationState();
+      this.rememberNavigationState(returnState);
+      this.detail = { type: 'movie', item: movie, info: null, loading: true, error: '', returnView:returnView, returnState:returnState };
       this.renderShell(returnView);
       this.api.getVodInfo(movie.stream_id).then(function (response) {
         if (!self.detail || self.detail.type !== 'movie' || String(self.detail.item.stream_id) !== String(movie.stream_id)) return;
@@ -1029,14 +1226,16 @@
         '<div class="detail-facts">' + (movie.cast ? '<div><span>Cast</span><strong>' + escapeHtml(movie.cast) + '</strong></div>' : '') + (movie.director ? '<div><span>Director</span><strong>' + escapeHtml(movie.director) + '</strong></div>' : '') + '</div></div></div></section></div>';
       document.getElementById('playMovie').addEventListener('click', function () { self.playMedia(movie, 'movie'); });
       document.getElementById('favoriteMovie').addEventListener('click', function () { XtreamlyTVStore.toggleFavorite(self.detail.item, 'movie'); self.state = XtreamlyTVStore.getState(); self.renderMovieDetail(); self.toast(favorite ? 'Removed from favorites' : 'Added to favorites'); });
-      document.getElementById('closeDetail').addEventListener('click', function () { var returnView = self.detail && self.detail.returnView || 'movies'; self.detail = null; self.renderShell(returnView); });
+      document.getElementById('closeDetail').addEventListener('click', function () { self.closeDetail(); });
       XtreamlyTVNavigation.focusFirst('#playMovie');
     },
 
     openSeriesDetail: function (series) {
       var self = this;
       var returnView = this.currentView === 'favorites' ? 'favorites' : 'series';
-      this.detail = { type: 'series', item: series, info: null, loading: true, error: '', season: null, returnView:returnView };
+      var returnState = this.captureNavigationState();
+      this.rememberNavigationState(returnState);
+      this.detail = { type: 'series', item: series, info: null, loading: true, error: '', season: null, returnView:returnView, returnState:returnState };
       this.renderShell(returnView);
       this.api.getSeriesInfo(series.series_id).then(function (response) {
         if (!self.detail || self.detail.type !== 'series' || String(self.detail.item.series_id) !== String(series.series_id)) return;
@@ -1105,7 +1304,7 @@
         (this.detail.error ? '<p class="detail-warning">' + escapeHtml(this.detail.error) + '</p>' : '') +
         '<div class="episode-grid">' + (episodes.length ? episodes.map(this.episodeCardHtml.bind(this)).join('') : '<div class="empty-state grid-empty">No episodes were returned for this season.</div>') + '</div></section></div>';
       document.getElementById('favoriteSeries').addEventListener('click', function () { XtreamlyTVStore.toggleFavorite(self.detail.item, 'series'); self.state = XtreamlyTVStore.getState(); self.renderSeriesDetail(); self.toast(favorite ? 'Removed from favorites' : 'Added to favorites'); });
-      document.getElementById('closeSeries').addEventListener('click', function () { var returnView = self.detail && self.detail.returnView || 'series'; self.detail = null; self.renderShell(returnView); });
+      document.getElementById('closeSeries').addEventListener('click', function () { self.closeDetail(); });
       Array.prototype.forEach.call(document.querySelectorAll('[data-season]'), function (button) {
         button.addEventListener('click', function () { self.detail.season = button.dataset.season; self.renderSeriesDetail(); });
       });
@@ -1137,25 +1336,61 @@
 
     favoriteSystemGroups: function () {
       var favorites = this.state.favorites || [];
-      return [
+      var overrides = this.state.settings && this.state.settings.favoriteSystemGroupOverrides || {};
+      var groups = [
         { id:'all', name:'All Favorites', icon:'heart', color:'purple', system:true, count:favorites.length },
         { id:'live', name:'Live TV', icon:'tv', color:'blue', system:true, count:favorites.filter(function (item) { return typeOf(item) === 'live'; }).length },
-        { id:'movie', name:'Movies', icon:'popcorn', color:'teal', system:true, count:favorites.filter(function (item) { return typeOf(item) === 'movie'; }).length },
-        { id:'series', name:'Series', icon:'play', color:'orange', system:true, count:favorites.filter(function (item) { return typeOf(item) === 'series'; }).length }
+        { id:'movie', name:'Movies', icon:'film', color:'teal', system:true, count:favorites.filter(function (item) { return typeOf(item) === 'movie'; }).length },
+        { id:'series', name:'Series', icon:'layers', color:'orange', system:true, count:favorites.filter(function (item) { return typeOf(item) === 'series'; }).length }
       ];
+      return groups.map(function (group) {
+        var override = overrides[group.id] || {};
+        return Object.assign({}, group, {
+          name:String(override.name || group.name).trim().slice(0, 36) || group.name,
+          icon:String(override.icon || group.icon),
+          color:String(override.color || group.color)
+        });
+      });
     },
 
-    favoriteGroups: function () {
-      return this.favoriteSystemGroups().concat((this.state.favoriteGroups || []).map(function (group) {
+    favoriteHiddenGroupIds: function () {
+      var values = this.state.settings && this.state.settings.hiddenFavoriteGroupIds;
+      var seen = {};
+      return (Array.isArray(values) ? values : []).map(String).filter(function (id) {
+        if (!id || seen[id]) return false;
+        seen[id] = true;
+        return true;
+      });
+    },
+
+    isFavoriteGroupHidden: function (groupId) {
+      return this.favoriteHiddenGroupIds().indexOf(String(groupId)) >= 0;
+    },
+
+    favoriteGroups: function (includeHidden) {
+      var groups = this.favoriteSystemGroups().concat((this.state.favoriteGroups || []).map(function (group) {
         return Object.assign({}, group, { system:false });
       }));
+      var byId = {};
+      groups.forEach(function (group) { byId[group.id] = group; });
+      var order = (this.state.favoriteGroupOrder || []).concat(groups.map(function (group) { return group.id; }));
+      var seen = {};
+      var ordered = order.map(String).filter(function (id) {
+        if (!byId[id] || seen[id]) return false;
+        seen[id] = true;
+        return true;
+      }).map(function (id) { return byId[id]; });
+      if (includeHidden) return ordered;
+      var hidden = {};
+      this.favoriteHiddenGroupIds().forEach(function (id) { hidden[id] = true; });
+      return ordered.filter(function (group) { return !hidden[group.id]; });
     },
 
     favoriteGroupById: function (id) {
-      return this.favoriteGroups().find(function (group) { return group.id === String(id); }) || this.favoriteSystemGroups()[0];
+      return this.favoriteGroups(true).find(function (group) { return group.id === String(id); }) || this.favoriteSystemGroups()[0];
     },
 
-    favoriteItemsForGroup: function (groupId) {
+    favoriteBaseItemsForGroup: function (groupId) {
       var favorites = this.state.favorites || [];
       groupId = String(groupId || 'all');
       if (groupId === 'all') return favorites.slice();
@@ -1167,6 +1402,27 @@
       var keys = {};
       (group.itemKeys || []).forEach(function (key) { keys[key] = true; });
       return favorites.filter(function (item) { return keys[App.favoriteKeyForItem(item)]; });
+    },
+
+    favoriteItemsForGroup: function (groupId) {
+      var base = this.favoriteBaseItemsForGroup(groupId);
+      var order = this.state.favoriteItemOrders && this.state.favoriteItemOrders[String(groupId || 'all')] || [];
+      if (!order.length) return base;
+      var byKey = {};
+      base.forEach(function (item) { byKey[App.favoriteKeyForItem(item)] = item; });
+      var seen = {};
+      var ordered = [];
+      order.forEach(function (key) {
+        if (byKey[key] && !seen[key]) {
+          ordered.push(byKey[key]);
+          seen[key] = true;
+        }
+      });
+      base.forEach(function (item) {
+        var key = App.favoriteKeyForItem(item);
+        if (!seen[key]) ordered.push(item);
+      });
+      return ordered;
     },
 
     filterFavoriteItems: function (items, filter) {
@@ -1196,183 +1452,369 @@
     },
 
     favoriteGroupIconHtml: function (group, className) {
-      return '<span class="' + (className || 'favorite-group-icon') + '">' + uiIcon(group.icon || 'folder', 'favorite-group-svg') + '</span>';
+      return '<span class="' + (className || 'favorite-group-icon') + '" data-group-icon="' + escapeHtml(group.icon || 'folder') + '">' + uiIcon(group.icon || 'folder', 'favorite-group-svg') + '</span>';
     },
 
-    favoriteGroupCount: function (group, filter) {
-      return this.filterFavoriteItems(this.favoriteItemsForGroup(group.id), filter || 'all').length;
+    favoriteGroupCount: function (group) {
+      return this.favoriteItemsForGroup(group.id).length;
     },
 
-    favoriteGroupCardHtml: function (group, filter) {
-      var count = this.favoriteGroupCount(group, filter);
-      return '<button class="favorite-group-card favorite-color-' + escapeHtml(group.color || 'purple') + ' focusable" data-favorite-group="' + escapeHtml(group.id) + '">' +
+    favoriteGroupCardHtml: function (group, selected) {
+      var count = this.favoriteGroupCount(group);
+      return '<button class="favorite-group-card favorite-color-' + escapeHtml(group.color || 'purple') + ' focusable ' + (selected ? 'active' : '') + '" data-favorite-group="' + escapeHtml(group.id) + '">' +
         this.favoriteGroupIconHtml(group) + '<span class="favorite-group-copy"><strong>' + escapeHtml(group.name) + '</strong><small>' + count + (count === 1 ? ' item' : ' items') + '</small></span></button>';
-    },
-
-    favoriteRecentItems: function (filter) {
-      var favorites = {};
-      (this.state.favorites || []).forEach(function (item) { favorites[App.favoriteKeyForItem(item)] = item; });
-      var recent = [];
-      (this.state.recent || []).forEach(function (item) {
-        var favorite = favorites[App.favoriteKeyForItem(item)];
-        if (favorite && !recent.some(function (entry) { return App.favoriteKeyForItem(entry) === App.favoriteKeyForItem(favorite); })) recent.push(favorite);
-      });
-      return this.filterFavoriteItems(recent, filter).slice(0, 7);
     },
 
     renderFavorites: function () {
       this.destroyVirtualGrid();
       if (this.favoriteMode === 'editor') this.renderFavoriteEditor();
-      else if (this.favoriteMode === 'group') this.renderFavoriteGroup();
-      else this.renderFavoritesHome();
+      else if (this.favoriteMode === 'manager') this.renderFavoriteManager();
+      else if (this.favoriteMode === 'item-manager') this.renderFavoriteItemManager();
+      else this.renderFavoriteHub(this.favoriteGroupId || 'all');
     },
 
     renderFavoritesHome: function () {
-      var self = this;
-      var view = document.getElementById('view');
-      var favorites = this.state.favorites || [];
-      var filter = this.favoriteFilter || 'all';
-      var recent = this.favoriteRecentItems(filter);
-      var systemGroups = this.favoriteSystemGroups();
-      var customGroups = (this.state.favoriteGroups || []).map(function (group) { return Object.assign({}, group, { system:false }); });
-      var groups;
-      if (filter === 'all') groups = systemGroups.concat(customGroups);
-      else {
-        groups = systemGroups.filter(function (group) { return group.id === filter; }).concat(customGroups.filter(function (group) {
-          return self.favoriteGroupCount(group, filter) > 0;
-        }));
-      }
-      var recentHtml = recent.length ? this.contentSection('Recently watched favorites', recent) :
-        '<section class="section favorite-empty-strip"><div class="section-head"><h2>Recently watched favorites</h2></div><div class="favorite-empty-copy">Favorite something you watch and it will appear here.</div></section>';
-      var emptyHtml = favorites.length ? '' : '<div class="favorite-onboarding"><span class="favorite-onboarding-icon">♡</span><div><strong>Your favorites are ready for you.</strong><p>Focus a channel, movie, or series anywhere in XtreamlyTV and press the red remote button.</p></div></div>';
-      view.innerHTML = '<div class="scroll-view favorites-home"><div class="favorites-intro"><div><p>Your favorite content, organized your way.</p></div><div class="favorites-intro-actions"><button id="browseFavoriteGroups" class="secondary-button focusable">Browse all</button><button id="newFavoriteGroup" class="primary-button focusable">+ New group</button></div></div>' +
-        this.favoriteFilterHtml(this.favoriteFiltersForItems(favorites, true), filter, 'data-favorite-home-filter') + emptyHtml + recentHtml +
-        '<section class="section favorite-groups-section"><div class="section-head"><h2>My Groups</h2><span class="section-meta">Create collections for sports, kids, news, or anything else</span></div><div class="favorite-groups-row">' +
-        groups.map(function (group) { return self.favoriteGroupCardHtml(group, filter); }).join('') +
-        '<button class="favorite-group-card favorite-add-group focusable" id="addFavoriteGroupCard"><span class="favorite-group-icon">' + uiIcon('plus', 'favorite-group-svg') + '</span><span class="favorite-group-copy"><strong>Add Group</strong><small>Build a custom collection</small></span></button></div></section></div>';
-
-      Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-home-filter]'), function (button) {
-        button.addEventListener('click', function () {
-          self.favoriteFilter = button.dataset.favoriteHomeFilter;
-          self.renderFavoritesHome();
-          XtreamlyTVNavigation.focusFirst('[data-favorite-home-filter="' + self.favoriteFilter + '"]');
-        });
-      });
-      Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-group]'), function (button) {
-        button.addEventListener('click', function () { self.openFavoriteGroup(button.dataset.favoriteGroup, filter); });
-      });
-      document.getElementById('browseFavoriteGroups').addEventListener('click', function () { self.openFavoriteGroup('all', filter); });
-      document.getElementById('newFavoriteGroup').addEventListener('click', function () { self.beginFavoriteEditor(); });
-      document.getElementById('addFavoriteGroupCard').addEventListener('click', function () { self.beginFavoriteEditor(); });
-      this.bindContentCards();
-      XtreamlyTVNavigation.focusFirst('[data-favorite-home-filter].active');
+      this.favoriteGroupId = 'all';
+      this.favoriteMode = 'home';
+      this.renderFavoriteHub('all');
     },
 
-    openFavoriteGroup: function (groupId, filter) {
-      var items = this.favoriteItemsForGroup(groupId);
-      var available = this.favoriteFiltersForItems(items, false).map(function (entry) { return entry.id; });
-      this.favoriteGroupId = String(groupId || 'all');
-      this.favoriteFilter = available.indexOf(filter) >= 0 ? filter : 'all';
-      this.favoriteMode = 'group';
+    openFavoriteGroup: function (groupId) {
+      var visibleGroups = this.favoriteGroups();
+      var requested = String(groupId || 'all');
+      var group = visibleGroups.find(function (entry) { return entry.id === requested; }) || visibleGroups[0];
+      this.favoriteGroupId = group ? group.id : '';
+      this.favoriteMode = !group || group.id === 'all' ? 'home' : 'group';
+      this.favoriteItemManager = null;
+      this.pendingFavoriteFirstFocus = true;
+      this.pendingNavigationRestore = null;
       this.renderFavorites();
     },
 
     favoriteMixedCardHtml: function (item) {
       var type = typeOf(item);
       var id = idOf(item, type);
+      var key = this.favoriteKeyForItem(item);
       var label = type === 'live' ? 'Live TV' : (type === 'movie' ? (yearOf(item) || 'Movie') : 'Series');
       var art = type === 'live' ? '<div class="favorite-live-art">' + logo(item, 'favorite-live-logo') + '<span class="favorite-live-label">LIVE</span></div>' : poster(item, type, 'favorite-mixed-art');
-      return '<button class="favorite-mixed-card focusable" data-content-type="' + type + '" data-content-id="' + escapeHtml(id) + '">' + art + '<div class="favorite-mixed-copy"><strong>' + escapeHtml(titleOf(item)) + '</strong><span>' + escapeHtml(label) + '</span></div></button>';
+      return '<button class="favorite-mixed-card focusable" data-content-type="' + type + '" data-content-id="' + escapeHtml(id) + '" data-favorite-item-key="' + escapeHtml(key) + '">' + art + '<div class="favorite-mixed-copy"><strong>' + escapeHtml(titleOf(item)) + '</strong><span>' + escapeHtml(label) + '</span></div><span class="favorite-card-heart">♥</span></button>';
     },
 
-    renderFavoriteGroup: function () {
+    favoriteGridLayout: function (group, items, hasRecent) {
+      var kinds = {};
+      (items || []).forEach(function (item) { kinds[typeOf(item)] = true; });
+      var typeKeys = Object.keys(kinds);
+      var onlyType = typeKeys.length === 1 ? typeKeys[0] : '';
+      if (group.id === 'live' || onlyType === 'live') {
+        return { kind:'live', columns:4, visibleRows:hasRecent ? 2 : 3, rowHeight:hasRecent ? 150 : 188, gap:16, className:'favorite-layout-live channel-grid' };
+      }
+      if (group.id === 'movie' || onlyType === 'movie') {
+        return { kind:'movie', columns:5, visibleRows:hasRecent ? 1 : 2, rowHeight:hasRecent ? 270 : 382, gap:18, className:'favorite-layout-poster poster-grid' };
+      }
+      if (group.id === 'series' || onlyType === 'series') {
+        return { kind:'series', columns:5, visibleRows:hasRecent ? 1 : 2, rowHeight:hasRecent ? 270 : 382, gap:18, className:'favorite-layout-poster poster-grid' };
+      }
+      return { kind:'mixed', columns:4, visibleRows:hasRecent ? 2 : 3, rowHeight:hasRecent ? 150 : 176, gap:16, className:'favorite-layout-mixed favorite-mixed-grid' };
+    },
+
+    favoriteGridCardHtml: function (item, layoutKind) {
+      if (layoutKind === 'mixed') return this.favoriteMixedCardHtml(item);
+      var type = typeOf(item);
+      var key = this.favoriteKeyForItem(item);
+      var html = layoutKind === 'live' ? this.channelTileHtml(item) : this.posterCardHtml(item, type);
+      html = html.replace('<button class="', '<button class="favorite-standard-card ');
+      html = html.replace(' data-content-type=', ' data-favorite-item-key="' + escapeHtml(key) + '" data-content-type=');
+      return html;
+    },
+
+    renderFavoriteHub: function (groupId) {
       var self = this;
       var view = document.getElementById('view');
-      var group = this.favoriteGroupById(this.favoriteGroupId);
-      var groupItems = this.favoriteItemsForGroup(group.id);
-      var filters = this.favoriteFiltersForItems(groupItems, false);
-      if (!filters.some(function (filter) { return filter.id === self.favoriteFilter; })) this.favoriteFilter = 'all';
-      var filtered = this.filterFavoriteItems(groupItems, this.favoriteFilter);
       var groups = this.favoriteGroups();
-      view.innerHTML = '<div class="favorites-browser"><aside class="favorite-group-rail"><div class="favorite-rail-title"><strong>All Groups</strong><span>' + (this.state.favorites || []).length + ' favorites</span></div><div class="favorite-rail-list">' +
-        groups.map(function (entry) {
-          return '<button class="favorite-group-button focusable ' + (entry.id === group.id ? 'active' : '') + '" data-favorite-rail-group="' + escapeHtml(entry.id) + '">' + self.favoriteGroupIconHtml(entry, 'favorite-rail-icon') + '<span><strong>' + escapeHtml(entry.name) + '</strong><small>' + self.favoriteItemsForGroup(entry.id).length + ' items</small></span></button>';
-        }).join('') + '</div><button id="railAddFavoriteGroup" class="favorite-rail-add focusable">' + uiIcon('plus', 'favorite-group-svg') + '<span>New group</span></button></aside>' +
-        '<section class="favorite-group-browser"><header class="favorite-group-header"><div><button id="favoriteGroupsBack" class="favorite-back-button focusable">‹ Groups</button><h2>' + escapeHtml(group.name) + '</h2><p>' + groupItems.length + (groupItems.length === 1 ? ' item' : ' items') + '</p></div><div class="favorite-group-actions">' + (!group.system ? '<button id="editFavoriteGroup" class="secondary-button focusable">Edit group</button>' : '') + '<button id="newFavoriteGroupFromBrowser" class="primary-button focusable">+ New group</button></div></header>' +
-        this.favoriteFilterHtml(filters, this.favoriteFilter, 'data-favorite-filter') +
-        '<div id="favoriteGridStatus" class="favorite-grid-status">' + (!filtered.length ? '<div class="favorite-grid-empty"><span>♡</span><strong>No ' + (this.favoriteFilter === 'all' ? 'items' : filters.find(function (entry) { return entry.id === self.favoriteFilter; }).label.toLowerCase()) + ' in this group.</strong><p>Edit the group to add favorites, or choose another filter.</p></div>' : '') + '</div>' +
-        '<div id="favoriteGrid" class="favorite-grid favorite-grid-' + escapeHtml(this.favoriteFilter) + '"></div></section></div>';
+      if (!groups.length) {
+        this.favoriteGroupId = '';
+        this.favoriteMode = 'home';
+        view.innerHTML = '<div class="favorites-hub" data-favorite-surface="hub">' +
+          '<section class="favorite-groups-section favorite-groups-static"><div class="favorite-groups-heading"><div><h2>My Groups</h2><p>Your favorite content, organized your way.</p></div><div class="favorite-groups-heading-actions"><button id="addFavoriteGroup" class="secondary-button focusable">+ Add group</button><button id="editFavoriteGroups" class="secondary-button focusable">Edit groups</button></div></div></section>' +
+          '<section class="favorite-content-section favorite-all-hidden"><div class="favorite-grid-empty"><span>◌</span><strong>All favorite groups are hidden.</strong><p>Open Edit groups to show a group again.</p></div></section></div>';
+        document.getElementById('addFavoriteGroup').addEventListener('click', function () { self.beginFavoriteEditor(null, 'home'); });
+        document.getElementById('editFavoriteGroups').addEventListener('click', function () { self.favoriteMode = 'manager'; self.renderFavorites(); });
+        XtreamlyTVNavigation.focusFirst('#editFavoriteGroups');
+        this.pendingNavigationRestore = null;
+        return;
+      }
+      var group = groups.find(function (entry) { return entry.id === String(groupId); }) || groups[0];
+      this.favoriteGroupId = group.id;
+      this.favoriteMode = group.id === 'all' ? 'home' : 'group';
+      var items = this.favoriteItemsForGroup(group.id);
+      var layout = this.favoriteGridLayout(group, items, false);
+      var emptyCopy = (this.state.favorites || []).length ?
+        '<div class="favorite-grid-empty"><span>♡</span><strong>No items in this group.</strong><p>Use Edit groups to add favorites to this collection.</p></div>' :
+        '<div class="favorite-grid-empty"><span>♡</span><strong>No favorites yet.</strong><p>Focus a channel, movie, or series and press the red remote button.</p></div>';
+      var reorderButton = group.id === 'all' ? '' : '<button id="reorderFavoriteItems" class="secondary-button focusable">Reorder items</button>';
 
-      Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-rail-group]'), function (button) {
-        button.addEventListener('click', function () { self.openFavoriteGroup(button.dataset.favoriteRailGroup, 'all'); });
+      view.innerHTML = '<div class="favorites-hub" data-favorite-surface="hub">' +
+        '<section class="favorite-groups-section favorite-groups-static"><div class="favorite-groups-heading"><div><h2>My Groups</h2><p>Your favorite content, organized your way.</p></div><div class="favorite-groups-heading-actions"><button id="addFavoriteGroup" class="secondary-button focusable">+ Add group</button><button id="editFavoriteGroups" class="secondary-button focusable">Edit groups</button>' + reorderButton + '</div></div><div id="favoriteGroupsRow" class="favorite-groups-row">' + groups.map(function (entry) { return self.favoriteGroupCardHtml(entry, entry.id === group.id); }).join('') + '</div></section>' +
+        '<section class="favorite-content-section"><div class="section-head"><h2>' + escapeHtml(group.name) + '</h2><span class="section-meta">' + items.length + (items.length === 1 ? ' item' : ' items') + '</span></div><div id="favoriteGridStatus" class="favorite-grid-status">' + (!items.length ? emptyCopy : '') + '</div><div id="favoriteGrid" class="favorite-grid"></div></section></div>';
+
+      document.getElementById('addFavoriteGroup').addEventListener('click', function () { self.beginFavoriteEditor(null, self.favoriteMode); });
+      document.getElementById('editFavoriteGroups').addEventListener('click', function () {
+        self.favoriteMode = 'manager';
+        self.renderFavorites();
       });
-      Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-filter]'), function (button) {
-        button.addEventListener('click', function () {
-          self.favoriteFilter = button.dataset.favoriteFilter;
-          self.renderFavoriteGroup();
-          XtreamlyTVNavigation.focusFirst('[data-favorite-filter="' + self.favoriteFilter + '"]');
-        });
+      var reorder = document.getElementById('reorderFavoriteItems');
+      if (reorder) reorder.addEventListener('click', function () { self.openFavoriteItemManager(group.id, self.favoriteMode); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-group]'), function (button) {
+        button.addEventListener('click', function () { self.openFavoriteGroup(button.dataset.favoriteGroup); });
       });
-      document.getElementById('favoriteGroupsBack').addEventListener('click', function () { self.favoriteMode = 'home'; self.renderFavorites(); });
-      document.getElementById('railAddFavoriteGroup').addEventListener('click', function () { self.beginFavoriteEditor(); });
-      document.getElementById('newFavoriteGroupFromBrowser').addEventListener('click', function () { self.beginFavoriteEditor(); });
-      var edit = document.getElementById('editFavoriteGroup');
-      if (edit) edit.addEventListener('click', function () { self.beginFavoriteEditor(group.id); });
-      if (filtered.length) this.setupFavoriteGrid(filtered);
-      else XtreamlyTVNavigation.focusFirst('[data-favorite-filter].active, .favorite-group-button.active');
+      this.bindContentCards();
+      var focusFirstItem = this.pendingFavoriteFirstFocus && items.length;
+      if (items.length) this.setupFavoriteGrid(items, group, false, layout);
+      if (this.pendingFavoriteFirstFocus && !items.length) this.pendingFavoriteFirstFocus = false;
+      if (!focusFirstItem) {
+        XtreamlyTVNavigation.focusFirst('[data-favorite-group].active');
+        this.applyPendingNavigationRestore();
+      }
     },
 
-    setupFavoriteGrid: function (items) {
+    setupFavoriteGrid: function (items, group, hasRecent, resolvedLayout) {
       var self = this;
       var container = document.getElementById('favoriteGrid');
       if (!container) return;
-      var filter = this.favoriteFilter;
-      var config;
-      if (filter === 'live') config = { columns:4, visibleRows:4, rowHeight:188, gap:16 };
-      else config = { columns:5, visibleRows:2, rowHeight:382, gap:18 };
-      container.classList.add(filter === 'live' ? 'channel-grid' : (filter === 'all' ? 'favorite-mixed-grid' : 'poster-grid'));
+      var layout = resolvedLayout || this.favoriteGridLayout(group, items, hasRecent);
+      this.favoriteGridItems = items.slice();
+      container.className = 'favorite-grid ' + layout.className;
       this.virtualGrid = new XtreamlyTVVirtualGrid({
         container:container,
-        columns:config.columns,
-        visibleRows:config.visibleRows,
-        rowHeight:config.rowHeight,
-        gap:config.gap,
+        columns:layout.columns,
+        visibleRows:layout.visibleRows,
+        rowHeight:layout.rowHeight,
+        gap:layout.gap,
         overscan:2,
-        renderItem:function (item) {
-          if (filter === 'live') return self.channelTileHtml(item);
-          if (filter === 'movie' || filter === 'series') return self.posterCardHtml(item, filter);
-          return self.favoriteMixedCardHtml(item);
-        },
-        onActivate:function (item) { self.openContent(item, typeOf(item), items); }
+        renderItem:function (item) { return self.favoriteGridCardHtml(item, layout.kind); },
+        onActivate:function (item) { self.openContent(item, typeOf(item), self.favoriteGridItems); }
       });
       this.virtualGrid.setItems(items);
+      if (this.pendingFavoriteFirstFocus) {
+        this.pendingFavoriteFirstFocus = false;
+        this.pendingNavigationRestore = null;
+        this.virtualGrid.focusIndex(0);
+      } else {
+        this.applyPendingNavigationRestore();
+      }
+      var grid = this.virtualGrid;
+      function settleFavoriteGridGeometry() {
+        if (self.virtualGrid !== grid) return;
+        grid.handleResize();
+        if (hasRecent) {
+          var recentHeight = grid.rowHeight;
+          Array.prototype.forEach.call(document.querySelectorAll('.favorite-recent-grid .favorite-standard-card, .favorite-recent-grid .favorite-mixed-card'), function (card) {
+            card.style.height = recentHeight + 'px';
+            card.style.minHeight = recentHeight + 'px';
+          });
+        }
+      }
+      if (window.requestAnimationFrame) window.requestAnimationFrame(settleFavoriteGridGeometry);
+      else setTimeout(settleFavoriteGridGeometry, 0);
+    },
+
+    favoriteManagerRowHtml: function (group, index, total) {
+      var count = this.favoriteGroupCount(group);
+      var hidden = this.isFavoriteGroupHidden(group.id);
+      var badges = (group.system ? '<span class="favorite-manager-badge">Built-in</span>' : '') + (hidden ? '<span class="favorite-manager-badge hidden-badge">Hidden</span>' : '');
+      var itemAction = group.id === 'all' ? '' : '<button class="favorite-manager-button focusable" data-manager-items="' + escapeHtml(group.id) + '">Reorder items</button>';
+      var editAction = '<button class="favorite-manager-button edit-button focusable" data-manager-edit="' + escapeHtml(group.id) + '">Edit</button>';
+      var visibilityAction = '<button class="favorite-manager-button visibility-button focusable" data-manager-visibility="' + escapeHtml(group.id) + '">' + (hidden ? 'Show' : 'Hide') + '</button>';
+      var summaryContents = '<span class="favorite-manager-icon favorite-color-' + escapeHtml(group.color || 'purple') + '">' + uiIcon(group.icon || 'folder', 'favorite-group-svg') + '</span><span class="favorite-manager-copy"><strong>' + escapeHtml(group.name) + '</strong><small>' + count + (count === 1 ? ' item' : ' items') + '</small></span>' + badges;
+      var summary = '<button type="button" class="favorite-manager-summary favorite-manager-select focusable" data-manager-edit="' + escapeHtml(group.id) + '" aria-label="Edit ' + escapeHtml(group.name) + '">' + summaryContents + '</button>';
+      return '<div class="favorite-manager-row ' + (group.system ? 'system ' : '') + (hidden ? 'hidden-group ' : '') + '" data-manager-row="' + escapeHtml(group.id) + '">' + summary + '<div class="favorite-manager-actions">' + itemAction + editAction + visibilityAction + '<button class="favorite-manager-button move-button focusable" data-manager-move="-1" data-manager-group="' + escapeHtml(group.id) + '"' + (index === 0 ? ' disabled' : '') + '>Move up</button><button class="favorite-manager-button move-button focusable" data-manager-move="1" data-manager-group="' + escapeHtml(group.id) + '"' + (index === total - 1 ? ' disabled' : '') + '>Move down</button></div></div>';
+    },
+
+    renderFavoriteManager: function (focusSelector) {
+      var self = this;
+      var view = document.getElementById('view');
+      var groups = this.favoriteGroups(true);
+      view.innerHTML = '<div class="favorite-manager" data-favorite-surface="manager"><header class="favorite-manager-header"><div><h2>Edit Favorite Groups</h2><p>Reorder, edit, hide, or show groups and manage the items inside them.</p></div><div><button id="favoriteManagerBack" class="secondary-button focusable">Back</button><button id="favoriteManagerAdd" class="primary-button focusable">+ Add group</button></div></header><div id="favoriteManagerList" class="favorite-manager-list">' + groups.map(function (group, index) { return self.favoriteManagerRowHtml(group, index, groups.length); }).join('') + '</div></div>';
+      document.getElementById('favoriteManagerBack').addEventListener('click', function () {
+        self.favoriteMode = self.favoriteGroupId === 'all' ? 'home' : 'group';
+        self.renderFavorites();
+      });
+      document.getElementById('favoriteManagerAdd').addEventListener('click', function () { self.beginFavoriteEditor(null, 'manager'); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-manager-edit]'), function (button) {
+        button.addEventListener('click', function () { self.beginFavoriteEditor(button.dataset.managerEdit, 'manager'); });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-manager-items]'), function (button) {
+        button.addEventListener('click', function () { self.openFavoriteItemManager(button.dataset.managerItems, 'manager'); });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-manager-visibility]'), function (button) {
+        button.addEventListener('click', function () { self.toggleFavoriteGroupVisibility(button.dataset.managerVisibility); });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-manager-move]'), function (button) {
+        button.addEventListener('click', function () { self.moveFavoriteGroup(button.dataset.managerGroup, Number(button.dataset.managerMove)); });
+      });
+      XtreamlyTVNavigation.focusFirst(focusSelector || '#favoriteManagerBack');
+      if (!focusSelector) this.applyPendingNavigationRestore();
+    },
+
+    toggleFavoriteGroupVisibility: function (groupId) {
+      groupId = String(groupId || '');
+      var hidden = this.favoriteHiddenGroupIds();
+      var index = hidden.indexOf(groupId);
+      if (index >= 0) hidden.splice(index, 1);
+      else hidden.push(groupId);
+      XtreamlyTVStore.updateSettings({ hiddenFavoriteGroupIds:hidden });
+      this.state = XtreamlyTVStore.getState();
+      delete this.navigationStates.favorites;
+      this.pendingNavigationRestore = null;
+      this.persistNavigationStates();
+      if (this.isFavoriteGroupHidden(this.favoriteGroupId)) {
+        var visible = this.favoriteGroups();
+        this.favoriteGroupId = visible.length ? visible[0].id : '';
+      }
+      var selector = '[data-manager-visibility="' + groupId.replace(/"/g, '\\"') + '"]';
+      this.renderFavoriteManager(selector);
+      this.toast(index >= 0 ? 'Group shown' : 'Group hidden');
+    },
+
+    moveFavoriteGroup: function (groupId, delta) {
+      var order = this.favoriteGroups(true).map(function (group) { return group.id; });
+      var from = order.indexOf(String(groupId));
+      var to = Math.max(0, Math.min(order.length - 1, from + Number(delta || 0)));
+      if (from < 0 || from === to) return;
+      var value = order.splice(from, 1)[0];
+      order.splice(to, 0, value);
+      XtreamlyTVStore.saveFavoriteGroupOrder(order);
+      this.state = XtreamlyTVStore.getState();
+      var selector = '[data-manager-group="' + String(groupId).replace(/"/g, '\\"') + '"][data-manager-move="' + (delta > 0 ? '1' : '-1') + '"]';
+      this.renderFavoriteManager(selector);
+      this.toast('Group order saved');
+    },
+
+    openFavoriteItemManager: function (groupId, returnMode) {
+      groupId = String(groupId || 'all');
+      if (groupId === 'all') return;
+      this.favoriteItemManager = {
+        groupId:groupId,
+        returnMode:returnMode || this.favoriteMode || 'group',
+        returnGroupId:this.favoriteGroupId
+      };
+      this.favoriteGroupId = groupId;
+      this.favoriteMode = 'item-manager';
+      this.renderFavorites();
+    },
+
+    favoriteItemManagerRowHtml: function (item, index, total) {
+      var type = typeOf(item);
+      var key = this.favoriteKeyForItem(item);
+      var art = type === 'live' ? '<div class="favorite-reorder-art favorite-reorder-live">' + logo(item, 'favorite-reorder-logo') + '</div>' : '<div class="favorite-reorder-art">' + poster(item, type, 'favorite-reorder-poster') + '</div>';
+      var label = type === 'live' ? 'Live TV' : (type === 'movie' ? 'Movie' : 'Series');
+      return '<div class="favorite-item-manager-row" data-item-manager-row="' + escapeHtml(key) + '"><span class="favorite-item-position">' + (index + 1) + '</span>' + art + '<div class="favorite-item-manager-copy"><strong>' + escapeHtml(titleOf(item)) + '</strong><small>' + escapeHtml(label) + '</small></div><div class="favorite-item-manager-actions"><button class="favorite-manager-button focusable" data-item-manager-key="' + escapeHtml(key) + '" data-item-manager-move="-1"' + (index === 0 ? ' disabled' : '') + '>Move up</button><button class="favorite-manager-button focusable" data-item-manager-key="' + escapeHtml(key) + '" data-item-manager-move="1"' + (index === total - 1 ? ' disabled' : '') + '>Move down</button></div></div>';
+    },
+
+    renderFavoriteItemManager: function () {
+      var self = this;
+      var view = document.getElementById('view');
+      var manager = this.favoriteItemManager;
+      if (!manager || manager.groupId === 'all') {
+        this.favoriteMode = this.favoriteGroupId === 'all' ? 'home' : 'group';
+        this.renderFavorites();
+        return;
+      }
+      var group = this.favoriteGroupById(manager.groupId);
+      var items = this.favoriteItemsForGroup(manager.groupId);
+      view.innerHTML = '<div class="favorite-item-manager" data-favorite-surface="item-manager"><header class="favorite-item-manager-header"><div><h2>Reorder ' + escapeHtml(group.name) + '</h2><p>Use Move up and Move down. Changes are saved immediately.</p></div><button id="favoriteItemManagerBack" class="secondary-button focusable">Back</button></header><div id="favoriteItemManagerList" class="favorite-item-manager-list">' + (items.length ? items.map(function (item, index) { return self.favoriteItemManagerRowHtml(item, index, items.length); }).join('') : '<div class="favorite-editor-empty">This group has no items to reorder.</div>') + '</div></div>';
+      document.getElementById('favoriteItemManagerBack').addEventListener('click', function () { self.closeFavoriteItemManager(); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-item-manager-move]'), function (button) {
+        button.addEventListener('click', function () { self.moveFavoriteItem(button.dataset.itemManagerKey, Number(button.dataset.itemManagerMove)); });
+      });
+      XtreamlyTVNavigation.focusFirst('#favoriteItemManagerBack');
+    },
+
+    moveFavoriteItem: function (key, delta) {
+      var manager = this.favoriteItemManager;
+      if (!manager) return;
+      var list = document.getElementById('favoriteItemManagerList');
+      var scrollTop = list ? list.scrollTop : 0;
+      var order = this.favoriteItemsForGroup(manager.groupId).map(function (item) { return App.favoriteKeyForItem(item); });
+      var from = order.indexOf(String(key));
+      var to = Math.max(0, Math.min(order.length - 1, from + Number(delta || 0)));
+      if (from < 0 || from === to) return;
+      var value = order.splice(from, 1)[0];
+      order.splice(to, 0, value);
+      XtreamlyTVStore.saveFavoriteItemOrder(manager.groupId, order);
+      this.state = XtreamlyTVStore.getState();
+      this.renderFavoriteItemManager();
+      var newList = document.getElementById('favoriteItemManagerList');
+      if (newList) newList.scrollTop = scrollTop;
       setTimeout(function () {
-        if (self.virtualGrid) self.virtualGrid.focusIndex(0);
+        XtreamlyTVNavigation.focusFirst('[data-item-manager-key="' + String(key).replace(/"/g, '\\"') + '"][data-item-manager-move="' + (delta > 0 ? '1' : '-1') + '"]');
       }, 0);
     },
 
-    beginFavoriteEditor: function (groupId) {
-      var group = (this.state.favoriteGroups || []).find(function (entry) { return entry.id === String(groupId || ''); });
+    closeFavoriteItemManager: function () {
+      var manager = this.favoriteItemManager;
+      if (!manager) return;
+      var returnMode = manager.returnMode === 'manager' ? 'manager' : (manager.returnGroupId === 'all' ? 'home' : 'group');
+      var returnGroupId = manager.returnGroupId || manager.groupId;
+      this.favoriteItemManager = null;
+      this.favoriteGroupId = returnGroupId;
+      this.favoriteMode = returnMode;
+      this.renderFavorites();
+      setTimeout(function () {
+        if (returnMode === 'manager') XtreamlyTVNavigation.focusFirst('[data-manager-items="' + String(manager.groupId).replace(/"/g, '\\"') + '"]');
+        else XtreamlyTVNavigation.focusFirst('#reorderFavoriteItems, [data-favorite-group].active');
+      }, 0);
+    },
+
+    beginFavoriteEditor: function (groupId, returnMode) {
+      var id = String(groupId || '');
+      var group = (this.state.favoriteGroups || []).find(function (entry) { return entry.id === id; });
+      var systemGroup = this.favoriteSystemGroups().find(function (entry) { return entry.id === id; });
       this.favoriteEditor = group ? {
         id:group.id,
         name:group.name,
         icon:group.icon,
         color:group.color,
         itemKeys:(group.itemKeys || []).slice(),
-        filter:'all'
-      } : { id:'', name:'', icon:'folder', color:'purple', itemKeys:[], filter:'all' };
+        filter:'all',
+        system:false
+      } : (systemGroup ? {
+        id:systemGroup.id,
+        name:systemGroup.name,
+        icon:systemGroup.icon,
+        color:systemGroup.color,
+        itemKeys:[],
+        filter:'all',
+        system:true
+      } : { id:'', name:'', icon:'folder', color:'purple', itemKeys:[], filter:'all', system:false });
       this.favoriteDeleteArmed = false;
+      this.favoriteEditorReturnMode = returnMode || this.favoriteMode || 'manager';
       this.favoriteMode = 'editor';
       this.renderFavorites();
     },
 
-    favoriteSelectionCardHtml: function (item) {
+    favoriteEditorGridLayout: function (items, filter) {
+      var kinds = {};
+      (items || []).forEach(function (item) { kinds[typeOf(item)] = true; });
+      var typeKeys = Object.keys(kinds);
+      var onlyType = typeKeys.length === 1 ? typeKeys[0] : '';
+      var resolved = String(filter || 'all') === 'all' ? onlyType : String(filter || 'all');
+      if (resolved === 'live') return { kind:'live', columns:4, visibleRows:4, rowHeight:154, gap:16, className:'catalog-live channel-grid' };
+      if (resolved === 'movie') return { kind:'movie', columns:5, visibleRows:2, rowHeight:326, gap:18, className:'catalog-movies poster-grid' };
+      if (resolved === 'series') return { kind:'series', columns:5, visibleRows:2, rowHeight:326, gap:18, className:'catalog-series poster-grid' };
+      return { kind:'mixed', columns:4, visibleRows:3, rowHeight:188, gap:16, className:'favorite-editor-standard-mixed' };
+    },
+
+    favoriteSelectionCardHtml: function (item, layoutKind) {
       var type = typeOf(item);
       var key = this.favoriteKeyForItem(item);
       var selected = this.favoriteEditor.itemKeys.indexOf(key) >= 0;
-      var label = type === 'live' ? 'Live TV' : (type === 'movie' ? (yearOf(item) || 'Movie') : 'Series');
-      var art = type === 'live' ? '<div class="favorite-live-art">' + logo(item, 'favorite-live-logo') + '</div>' : poster(item, type, 'favorite-mixed-art');
-      return '<button class="favorite-selection-card focusable ' + (selected ? 'selected' : '') + '" data-group-item-key="' + escapeHtml(key) + '">' + art + '<span class="selection-check">✓</span><div class="favorite-mixed-copy"><strong>' + escapeHtml(titleOf(item)) + '</strong><span>' + escapeHtml(label) + '</span></div></button>';
+      var renderKind = layoutKind === 'mixed' ? (type === 'live' ? 'live' : type) : layoutKind;
+      var html = renderKind === 'live' ? this.channelTileHtml(item) : this.posterCardHtml(item, type);
+      html = html.replace('<button class="', '<button class="favorite-selection-card ' + (selected ? 'selected ' : ''));
+      html = html.replace(/ data-content-type="[^"]*"/, '').replace(/ data-content-id="[^"]*"/, '');
+      html = html.replace('>', ' data-group-item-key="' + escapeHtml(key) + '"><span class="selection-check">✓</span>');
+      return html;
     },
 
     renderFavoriteEditor: function () {
@@ -1382,27 +1824,40 @@
       if (!editor) { this.favoriteMode = 'home'; this.renderFavoritesHome(); return; }
       var favorites = this.state.favorites || [];
       var filtered = this.filterFavoriteItems(favorites, editor.filter || 'all');
-      var icons = ['heart', 'tv', 'popcorn', 'play', 'smile', 'trophy', 'folder', 'star'];
+      var icons = ['heart', 'tv', 'film', 'layers', 'popcorn', 'play', 'smile', 'trophy', 'folder', 'star'];
       var colors = ['purple', 'blue', 'teal', 'orange', 'rose', 'lime', 'slate'];
-      view.innerHTML = '<div class="favorite-editor"><section class="favorite-editor-settings"><button id="cancelFavoriteEditorTop" class="favorite-back-button focusable">‹ Back</button><div class="favorite-editor-heading"><h2>' + (editor.id ? 'Edit Group' : 'Add Group') + '</h2><p>Choose a name, an icon, and which favorites belong in this collection.</p></div>' +
+      var editorCopy = editor.system ? 'Customize this built-in group name, icon, and color.' : 'Choose a name, an icon, and which favorites belong in this collection.';
+      var editorSummary = editor.system ? '' :
+        '<div class="favorite-editor-summary"><strong id="favoriteSelectionCount">' + editor.itemKeys.length + '</strong><span>selected favorites</span></div>';
+      var editorContent = editor.system ? '' :
+        '<section class="favorite-editor-content"><header><div><h3>Choose favorites</h3><p>Press OK to add or remove an item from this group.</p></div></header>' + this.favoriteFilterHtml(this.favoriteFiltersForItems(favorites, true), editor.filter || 'all', 'data-editor-favorite-filter') + '<div id="favoriteEditorGrid" class="favorite-editor-grid"></div></section>';
+      view.innerHTML = '<div class="favorite-editor' + (editor.system ? ' favorite-editor-system' : '') + '"><section class="favorite-editor-settings"><button id="cancelFavoriteEditorTop" class="favorite-back-button focusable">‹ Back</button><div class="favorite-editor-heading"><h2>' + (editor.id ? 'Edit Group' : 'Add Group') + '</h2><p>' + editorCopy + '</p></div>' +
         '<label class="field"><span>Group name</span><input id="favoriteGroupName" class="focusable" maxlength="36" autocomplete="off" value="' + escapeHtml(editor.name) + '" placeholder="Weekend Movies"></label>' +
         '<div class="favorite-editor-label">Group icon</div><div class="favorite-icon-picker">' + icons.map(function (icon) { return '<button class="favorite-icon-choice focusable ' + (editor.icon === icon ? 'active' : '') + '" data-favorite-icon="' + icon + '">' + uiIcon(icon, 'favorite-group-svg') + '</button>'; }).join('') + '</div>' +
         '<div class="favorite-editor-label">Group color</div><div class="favorite-color-picker">' + colors.map(function (color) { return '<button class="favorite-color-choice favorite-color-' + color + ' focusable ' + (editor.color === color ? 'active' : '') + '" data-favorite-color="' + color + '"><span></span></button>'; }).join('') + '</div>' +
-        '<div class="favorite-editor-summary"><strong id="favoriteSelectionCount">' + editor.itemKeys.length + '</strong><span>selected favorites</span></div><div class="favorite-editor-actions"><button id="saveFavoriteGroup" class="primary-button focusable">Save group</button><button id="cancelFavoriteEditor" class="secondary-button focusable">Cancel</button>' + (editor.id ? '<button id="deleteFavoriteGroup" class="danger-button focusable">Delete group</button>' : '') + '</div></section>' +
-        '<section class="favorite-editor-content"><header><div><h3>Choose favorites</h3><p>Press OK to add or remove an item from this group.</p></div></header>' + this.favoriteFilterHtml(this.favoriteFiltersForItems(favorites, true), editor.filter || 'all', 'data-editor-favorite-filter') + '<div id="favoriteEditorGrid" class="favorite-editor-grid"></div></section></div>';
+        editorSummary + '<div class="favorite-editor-actions"><button id="saveFavoriteGroup" class="primary-button focusable">Save group</button><button id="cancelFavoriteEditor" class="secondary-button focusable">Cancel</button>' + (editor.id && !editor.system ? '<button id="deleteFavoriteGroup" class="danger-button focusable">Delete group</button>' : '') + '</div></section>' +
+        editorContent + '</div>';
 
       var nameInput = document.getElementById('favoriteGroupName');
-      nameInput.addEventListener('input', function () { editor.name = nameInput.value; });
+      nameInput.addEventListener('input', function () {
+        editor.name = nameInput.value;
+        var previewName = document.getElementById('favoriteSystemPreviewName');
+        if (previewName) previewName.textContent = editor.name || 'Untitled group';
+      });
       Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-icon]'), function (button) {
         button.addEventListener('click', function () {
           editor.icon = button.dataset.favoriteIcon;
           Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-icon]'), function (entry) { entry.classList.toggle('active', entry === button); });
+          var previewIcon = document.getElementById('favoriteSystemPreviewIcon');
+          if (previewIcon) previewIcon.innerHTML = uiIcon(editor.icon, 'favorite-group-svg');
         });
       });
       Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-color]'), function (button) {
         button.addEventListener('click', function () {
           editor.color = button.dataset.favoriteColor;
           Array.prototype.forEach.call(document.querySelectorAll('[data-favorite-color]'), function (entry) { entry.classList.toggle('active', entry === button); });
+          var preview = document.querySelector('.favorite-system-preview');
+          if (preview) preview.className = 'favorite-system-preview favorite-color-' + editor.color;
         });
       });
       Array.prototype.forEach.call(document.querySelectorAll('[data-editor-favorite-filter]'), function (button) {
@@ -1415,7 +1870,7 @@
       function cancelEditor() {
         self.favoriteEditor = null;
         self.favoriteDeleteArmed = false;
-        self.favoriteMode = self.favoriteGroupId && self.favoriteGroupId !== 'all' ? 'group' : 'home';
+        self.favoriteMode = self.favoriteEditorReturnMode || 'manager';
         self.renderFavorites();
       }
       document.getElementById('cancelFavoriteEditorTop').addEventListener('click', cancelEditor);
@@ -1423,6 +1878,18 @@
       document.getElementById('saveFavoriteGroup').addEventListener('click', function () {
         editor.name = String(nameInput.value || '').trim();
         if (!editor.name) { self.toast('Enter a group name'); nameInput.focus(); return; }
+        if (editor.system) {
+          var overrides = Object.assign({}, self.state.settings && self.state.settings.favoriteSystemGroupOverrides || {});
+          overrides[editor.id] = { name:editor.name, icon:editor.icon, color:editor.color };
+          XtreamlyTVStore.updateSettings({ favoriteSystemGroupOverrides:overrides });
+          self.state = XtreamlyTVStore.getState();
+          self.favoriteEditor = null;
+          self.favoriteGroupId = editor.id;
+          self.favoriteMode = self.favoriteEditorReturnMode === 'manager' ? 'manager' : (editor.id === 'all' ? 'home' : 'group');
+          self.toast('Group updated');
+          self.renderFavorites();
+          return;
+        }
         var saved = XtreamlyTVStore.saveFavoriteGroup(editor);
         self.state = XtreamlyTVStore.getState();
         self.favoriteEditor = null;
@@ -1444,18 +1911,18 @@
         self.state = XtreamlyTVStore.getState();
         self.favoriteEditor = null;
         self.favoriteGroupId = 'all';
-        self.favoriteMode = 'home';
+        self.favoriteMode = self.favoriteEditorReturnMode || 'manager';
         self.favoriteDeleteArmed = false;
         self.toast('Group deleted');
         self.renderFavorites();
       });
-      this.setupFavoriteEditorGrid(filtered);
+      if (!editor.system) this.setupFavoriteEditorGrid(filtered, editor.filter || 'all');
       var menuHint = document.getElementById('menuHint');
       if (menuHint) { menuHint.classList.remove('visible'); menuHint.setAttribute('aria-hidden', 'true'); }
       XtreamlyTVNavigation.focusFirst('#cancelFavoriteEditorTop');
     },
 
-    setupFavoriteEditorGrid: function (items) {
+    setupFavoriteEditorGrid: function (items, filter) {
       var self = this;
       var container = document.getElementById('favoriteEditorGrid');
       if (!container) return;
@@ -1463,15 +1930,16 @@
         container.innerHTML = '<div class="favorite-editor-empty">No favorites match this filter.</div>';
         return;
       }
-      container.classList.add('favorite-mixed-grid');
+      var layout = this.favoriteEditorGridLayout(items, filter);
+      container.className = 'favorite-editor-grid ' + layout.className;
       this.virtualGrid = new XtreamlyTVVirtualGrid({
         container:container,
-        columns:5,
-        visibleRows:2,
-        rowHeight:344,
-        gap:16,
+        columns:layout.columns,
+        visibleRows:layout.visibleRows,
+        rowHeight:layout.rowHeight,
+        gap:layout.gap,
         overscan:2,
-        renderItem:function (item) { return self.favoriteSelectionCardHtml(item); },
+        renderItem:function (item) { return self.favoriteSelectionCardHtml(item, layout.kind); },
         onActivate:function (item, index, element) {
           var key = self.favoriteKeyForItem(item);
           var keyIndex = self.favoriteEditor.itemKeys.indexOf(key);
@@ -1484,6 +1952,7 @@
         }
       });
       this.virtualGrid.setItems(items);
+      this.applyPendingNavigationRestore();
     },
 
     renderSettings: function () {
@@ -1600,6 +2069,7 @@
 
     playMedia: function (item, type, list, parent) {
       var self = this;
+      this.playerReturnState = this.captureNavigationState();
       this.playerOpen = true;
       this.playerMedia = item;
       this.playerType = type;
@@ -1626,7 +2096,7 @@
       player.id = 'player';
       player.innerHTML = '<video id="video" autoplay playsinline webkit-playsinline preload="auto"></video><div class="player-shade"></div>' +
         '<div id="playerLoading" class="player-loading"><div class="spinner"></div><strong id="playerLoadingText">Opening stream…</strong><span id="playerFormatLabel"></span></div>' +
-        '<div class="player-top"><div class="player-brand"><img src="assets/icon.png" alt="X"><span>treamlyTV</span></div><div class="player-clock">' + formatTime(new Date()) + '</div></div>' +
+        '<div class="player-top"><div class="player-brand"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"></div><div class="player-clock">' + formatTime(new Date()) + '</div></div>' +
         '<div class="player-bottom"><div id="playerTimeline" class="player-timeline"><span id="currentTime">0:00</span><div id="playerProgressTrack" class="player-progress"><i id="playerProgress"></i><b id="playerScrubber"></b></div><span id="durationTime">0:00</span><button id="goLiveButton" class="go-live-button" type="button">Go Live</button></div>' +
         '<div class="player-transport"><button id="rewindButton" type="button">−30</button><button id="playPauseButton" class="play-pause-button" type="button">Pause</button><button id="forwardButton" type="button">+30</button></div>' +
         '<div class="player-info"><div id="playerArtwork">' + artwork + '</div><div><div id="playerTitle" class="player-channel">' + escapeHtml(type === 'episode' ? episodeTitle(item) : titleOf(item)) + '</div><div id="playerProgram" class="player-program">' + escapeHtml(this.mediaSubtitle(item, type)) + '</div><div id="playerDescription" class="player-program-description">' + escapeHtml(type === 'live' ? '' : descriptionOf(item)) + '</div></div>' +
@@ -2013,7 +2483,12 @@
       this.playerHasPlayed = false;
       this.lastPlaybackToggleAt = 0;
       this.state = XtreamlyTVStore.getState();
-      this.renderShell(this.currentView);
+      var returnState = this.playerReturnState;
+      this.playerReturnState = null;
+      if (returnState && document.querySelector('.shell')) {
+        this.prepareNavigationState(returnState);
+        this.queueNavigationRestore(returnState);
+      } else this.renderShell(this.currentView, returnState);
     },
 
     changeChannel: function (delta) {
@@ -2114,18 +2589,24 @@
       }
       if (event.keyCode === BACK) {
         event.preventDefault();
-        if (this.detail) { this.detail = null; this.renderShell(this.currentView); }
+        if (this.detail) this.closeDetail();
+        else if (this.currentView === 'favorites' && this.favoriteMode === 'item-manager') {
+          this.closeFavoriteItemManager();
+        }
         else if (this.currentView === 'favorites' && this.favoriteMode === 'editor') {
           this.favoriteEditor = null;
           this.favoriteDeleteArmed = false;
-          this.favoriteMode = this.favoriteGroupId && this.favoriteGroupId !== 'all' ? 'group' : 'home';
+          this.favoriteMode = this.favoriteEditorReturnMode || 'manager';
+          this.renderFavorites();
+        }
+        else if (this.currentView === 'favorites' && this.favoriteMode === 'manager') {
+          this.favoriteMode = this.favoriteGroupId === 'all' ? 'home' : 'group';
           this.renderFavorites();
         }
         else if (this.currentView === 'favorites' && this.favoriteMode === 'group') {
-          this.favoriteMode = 'home';
-          this.renderFavorites();
+          this.openFavoriteGroup('all');
         }
-        else if (this.currentView !== 'home' && document.querySelector('.shell')) this.renderShell('home');
+        else if (this.currentView !== 'home' && document.querySelector('.shell')) { this.rememberNavigationState(); this.renderShell('home', this.navigationStates.home || null); }
         else if (this.state.credentials || this.demo) this.exitApp();
       }
     },

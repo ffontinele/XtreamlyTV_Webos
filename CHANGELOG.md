@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.6.0 - 2026-07-26
+
+### Cross-platform TV overhaul
+
+- Finalized one remote-first Favorites workspace across webOS and Android TV.
+- Added explicit group and item managers; removed long-press as the active reorder workflow.
+- Added hide/show, ordering, and appearance customization for built-in and custom favorite groups.
+- Removed Recently Watched Favorites and kept watch-history rails on Home.
+- Added persistent return-focus behavior for playback, details, categories, Favorites groups, and virtual grids.
+- Made category and group selection focus the first content card rather than search or navigation controls.
+- Split Home history into Continue watching Live TV, Movies, and Series rails.
+- Added built-in group appearance persistence and automatic-membership editing on Android TV.
+- Held the native Android splash until the first Compose frame, then continued with the branded provider-loading screen.
+- Added Android state-model and unit-test coverage for built-in group appearance and visibility behavior.
+
+### Release-candidate display polish
+
+- Replaced in-app raster logo tiles with a transparent vector XtreamlyTV wordmark while preserving launcher icons and TV banners.
+- Stabilized Android catalog category borders and made category-to-card D-pad transitions deterministic.
+- Added full-card row alignment so catalog, Favorites, and Series episode grids never leave the focused card clipped.
+- Rebalanced Series Details so hero actions and season controls remain fully visible on common Android TV logical resolutions.
+
+
+### Release-candidate regression cleanup
+
+- Uses the exact launcher-icon X artwork for every in-app brand lockup and splash surface.
+- Fits complete Movie and Series artwork inside poster cards on webOS and Android TV.
+- Snaps Android Live TV browsing to complete 4×4 pages and category browsing to complete ten-button pages.
+- Routes Home hero focus directly to the provider shortcuts instead of allowing geometric focus to skip to a distant history rail.
+- Preserves the category rail position, returns Left from the first card column to the active category, and sends category activation directly to the first card.
+
 ## 0.5.1 - 2026-07-20
 
 ### Android TV device polish

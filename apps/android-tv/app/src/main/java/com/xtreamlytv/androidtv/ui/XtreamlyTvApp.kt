@@ -22,11 +22,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,7 +50,13 @@ fun XtreamlyTvApp(
     onContentReady: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SideEffect { onContentReady() }
+    LaunchedEffect(Unit) {
+        // Keep the platform starting window visible until Compose has produced a
+        // frame containing the branded loading surface. This prevents the TV
+        // launcher from exposing a blank window during cold start.
+        withFrameNanos { }
+        onContentReady()
+    }
 
     CompositionLocalProvider(LocalTvPalette provides paletteFor(state.settings.theme)) {
         MaterialTheme {
@@ -122,8 +128,9 @@ private fun AppShell(state: AppUiState, viewModel: AppViewModel) {
                         AppScreen.Home -> HomeScreen(state, viewModel)
                         is AppScreen.Catalog -> CatalogScreen(screen.type, state, viewModel)
                         is AppScreen.Detail -> DetailScreen(screen.item, state, viewModel)
-                        AppScreen.Favorites -> FavoritesHomeScreen(state, viewModel)
-                        is AppScreen.FavoriteGroupBrowser -> FavoriteGroupBrowserScreen(screen.groupId, state, viewModel)
+                        AppScreen.Favorites -> StableFavoritesScreen("all", state, viewModel)
+                        is AppScreen.FavoriteGroupBrowser -> StableFavoritesScreen(screen.groupId, state, viewModel)
+                        AppScreen.FavoriteGroupsManager -> StableFavoriteGroupsManagerScreen(state, viewModel)
                         is AppScreen.FavoriteGroupEditor -> FavoriteGroupEditorScreen(screen.groupId, state, viewModel)
                         AppScreen.Settings -> SettingsScreen(state, viewModel)
                         else -> Unit
@@ -237,7 +244,7 @@ private fun AppScreen.section(): AppSection = when (this) {
         ContentType.SERIES, ContentType.EPISODE -> AppSection.Series
     }
     is AppScreen.Detail -> origin.section()
-    AppScreen.Favorites, is AppScreen.FavoriteGroupBrowser, is AppScreen.FavoriteGroupEditor -> AppSection.Favorites
+    AppScreen.Favorites, is AppScreen.FavoriteGroupBrowser, AppScreen.FavoriteGroupsManager, is AppScreen.FavoriteGroupEditor -> AppSection.Favorites
     AppScreen.Settings -> AppSection.Settings
     is AppScreen.Player -> origin.section()
     AppScreen.Login -> AppSection.Home
@@ -254,6 +261,7 @@ private fun screenTitle(screen: AppScreen): String = when (screen) {
     }
     AppScreen.Favorites -> "Favorites"
     is AppScreen.FavoriteGroupBrowser -> "Favorites"
+    AppScreen.FavoriteGroupsManager -> "Edit Groups"
     is AppScreen.FavoriteGroupEditor -> if (screen.groupId == null) "Add Group" else "Edit Group"
     AppScreen.Settings -> "Settings"
     is AppScreen.Player -> screen.request.item.name

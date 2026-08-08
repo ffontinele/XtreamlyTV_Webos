@@ -38,3 +38,5 @@ test-results/
 
 .gradle-bootstrap/
 **/.gradle-bootstrap/
+
+.xtreamlytv-backups/

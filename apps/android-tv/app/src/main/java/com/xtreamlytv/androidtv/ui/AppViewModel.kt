@@ -14,6 +14,7 @@ import com.xtreamlytv.androidtv.model.Category
 import com.xtreamlytv.androidtv.model.ContentType
 import com.xtreamlytv.androidtv.model.Credentials
 import com.xtreamlytv.androidtv.model.FavoriteGroup
+import com.xtreamlytv.androidtv.model.FavoriteGroupAppearance
 import com.xtreamlytv.androidtv.model.PlaybackProgress
 import com.xtreamlytv.androidtv.model.PlayerRequest
 import com.xtreamlytv.androidtv.model.ProviderSummary
@@ -34,15 +35,30 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
+data class FocusRequest(
+    val scope: String,
+    val itemKey: String? = null,
+    val firstItem: Boolean = false,
+)
+
 sealed interface AppScreen {
     data object Login : AppScreen
     data object Home : AppScreen
     data class Catalog(val type: ContentType) : AppScreen
-    data class Detail(val item: CatalogItem, val origin: AppScreen) : AppScreen
+    data class Detail(
+        val item: CatalogItem,
+        val origin: AppScreen,
+        val returnFocus: FocusRequest? = null,
+    ) : AppScreen
     data object Favorites : AppScreen
     data class FavoriteGroupBrowser(val groupId: String) : AppScreen
+    data object FavoriteGroupsManager : AppScreen
     data class FavoriteGroupEditor(val groupId: String?) : AppScreen
-    data class Player(val request: PlayerRequest, val origin: AppScreen) : AppScreen
+    data class Player(
+        val request: PlayerRequest,
+        val origin: AppScreen,
+        val returnFocus: FocusRequest? = null,
+    ) : AppScreen
     data object Settings : AppScreen
 }
 
@@ -61,10 +77,17 @@ data class AppUiState(
     val searchQuery: String = "",
     val favorites: List<CatalogItem> = emptyList(),
     val favoriteGroups: List<FavoriteGroup> = emptyList(),
+    val favoriteGroupOrder: List<String> = listOf("all", "live", "movie", "series"),
+    val favoriteItemOrders: Map<String, List<String>> = emptyMap(),
+    val favoriteGroupAppearances: Map<String, FavoriteGroupAppearance> = emptyMap(),
+    val hiddenFavoriteGroupIds: Set<String> = emptySet(),
+    val selectedFavoriteGroupId: String = "all",
     val recent: List<CatalogItem> = emptyList(),
     val progress: Map<String, PlaybackProgress> = emptyMap(),
     val settings: AppSettings = AppSettings(),
     val detailEpisodes: List<CatalogItem> = emptyList(),
+    val detailSelectedSeason: Int? = null,
+    val focusRequest: FocusRequest? = null,
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -77,6 +100,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private var client: XtreamClient? = null
     private val categoryCache = LinkedHashMap<String, List<CatalogItem>>(16, 0.75f, true)
     private var catalogRequestId = 0L
+    private val lastFocusByArea = mutableMapOf<String, FocusRequest>()
     private val _state = MutableStateFlow(AppUiState())
     val state: StateFlow<AppUiState> = _state.asStateFlow()
 
@@ -93,6 +117,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     settings = local?.settings ?: AppSettings(),
                     favorites = local?.favorites.orEmpty(),
                     favoriteGroups = local?.favoriteGroups.orEmpty(),
+                    favoriteGroupOrder = local?.favoriteGroupOrder ?: listOf("all", "live", "movie", "series"),
+                    favoriteItemOrders = local?.favoriteItemOrders.orEmpty(),
+                    favoriteGroupAppearances = local?.favoriteGroupAppearances.orEmpty(),
+                    hiddenFavoriteGroupIds = local?.hiddenFavoriteGroupIds.orEmpty(),
+                    selectedFavoriteGroupId = firstVisibleFavoriteGroupId(
+                        order = local?.favoriteGroupOrder ?: BuiltInFavoriteGroupIds,
+                        hidden = local?.hiddenFavoriteGroupIds.orEmpty(),
+                    ),
                     recent = local?.recent.orEmpty(),
                     progress = local?.progress.orEmpty(),
                 )
@@ -250,33 +282,69 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openHome() = _state.update {
-        it.copy(screen = AppScreen.Home, items = emptyList(), searchQuery = "", error = null)
+    fun rememberFocusedItem(area: String, scope: String, key: String) {
+        lastFocusByArea[area] = FocusRequest(scope = scope, itemKey = key)
     }
 
-    fun openFavorites() = _state.update {
-        it.copy(screen = AppScreen.Favorites, items = emptyList(), searchQuery = "", error = null)
+    fun consumeFocusRequest(scope: String) {
+        _state.update { current ->
+            if (current.focusRequest?.scope == scope) current.copy(focusRequest = null) else current
+        }
+    }
+
+    fun openHome() = _state.update {
+        it.copy(
+            screen = AppScreen.Home,
+            items = emptyList(),
+            searchQuery = "",
+            error = null,
+            focusRequest = lastFocusByArea[AREA_HOME],
+        )
+    }
+
+    fun openFavorites() = _state.update { current ->
+        val selected = current.selectedFavoriteGroupId.takeIf { id ->
+            id !in current.hiddenFavoriteGroupIds && id in validFavoriteGroupIds(current.favoriteGroups)
+        } ?: firstVisibleFavoriteGroupId(current.favoriteGroupOrder, current.hiddenFavoriteGroupIds)
+        val scope = selected.takeIf { it.isNotBlank() }?.let(::favoriteFocusScope)
+        val remembered = lastFocusByArea[AREA_FAVORITES]?.takeIf { it.scope == scope }
+        current.copy(
+            screen = if (selected == "all" || selected.isBlank()) AppScreen.Favorites else AppScreen.FavoriteGroupBrowser(selected),
+            selectedFavoriteGroupId = selected,
+            items = emptyList(),
+            searchQuery = "",
+            error = null,
+            focusRequest = remembered ?: scope?.let { FocusRequest(it, firstItem = true) },
+        )
     }
 
     fun openSettings() = _state.update {
-        it.copy(screen = AppScreen.Settings, items = emptyList(), searchQuery = "", error = null)
+        it.copy(screen = AppScreen.Settings, items = emptyList(), searchQuery = "", error = null, focusRequest = null)
     }
 
     fun openCatalog(type: ContentType) {
         val categories = _state.value.categories[type].orEmpty()
         val selected = _state.value.selectedCategories[type] ?: categories.firstOrNull()
+        val remembered = lastFocusByArea[catalogArea(type)]
         _state.update {
             it.copy(
                 screen = AppScreen.Catalog(type),
                 items = emptyList(),
                 searchQuery = "",
                 error = null,
+                focusRequest = remembered ?: selected?.let { category ->
+                    FocusRequest(catalogFocusScope(type, category.id), firstItem = true)
+                },
             )
         }
-        selected?.let { selectCategory(type, it) }
+        selected?.let { selectCategory(type, it, preserveRememberedFocus = remembered != null) }
     }
 
-    fun selectCategory(type: ContentType, category: Category) {
+    fun selectCategory(
+        type: ContentType,
+        category: Category,
+        preserveRememberedFocus: Boolean = false,
+    ) {
         val api = client ?: return
         val key = cacheKey(type, category.id)
         val cached = categoryCache[key]
@@ -288,6 +356,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 items = cached.orEmpty(),
                 searchQuery = "",
                 error = null,
+                focusRequest = if (preserveRememberedFocus) it.focusRequest
+                else FocusRequest(catalogFocusScope(type, category.id), firstItem = true),
             )
         }
         if (cached != null) {
@@ -322,12 +392,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openDetail(item: CatalogItem) {
         val origin = _state.value.screen
+        val returnFocus = focusForScreen(origin)
         _state.update {
             it.copy(
-                screen = AppScreen.Detail(item, origin),
+                screen = AppScreen.Detail(item, origin, returnFocus),
                 detailEpisodes = emptyList(),
+                detailSelectedSeason = null,
                 loading = item.type == ContentType.SERIES,
                 error = null,
+                focusRequest = null,
             )
         }
         if (item.type == ContentType.SERIES) loadSeriesEpisodes(item)
@@ -340,7 +413,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 .onSuccess { episodes ->
                     val current = _state.value.screen as? AppScreen.Detail
                     if (current?.item?.id == series.id) {
-                        _state.update { it.copy(loading = false, detailEpisodes = episodes) }
+                        val firstSeason = episodes.mapNotNull { it.season }.distinct().sorted().firstOrNull()
+                        _state.update {
+                            it.copy(
+                                loading = false,
+                                detailEpisodes = episodes,
+                                detailSelectedSeason = firstSeason,
+                            )
+                        }
                     }
                 }
                 .onFailure { error ->
@@ -349,10 +429,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun selectDetailSeason(seriesId: String, season: Int) {
+        _state.update {
+            it.copy(
+                detailSelectedSeason = season,
+                focusRequest = FocusRequest(detailFocusScope(seriesId, season), firstItem = true),
+            )
+        }
+    }
+
     fun play(item: CatalogItem, queue: List<CatalogItem> = currentQueueFor(item)) {
         val api = client ?: return
         val playableQueue = queue.filter { it.type == item.type && it.type != ContentType.SERIES }
         val origin = _state.value.screen
+        val returnFocus = focusForScreen(origin)
         val progress = _state.value.progress[itemKey(item)]
         val request = PlayerRequest(
             item = item,
@@ -361,7 +451,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             startPositionMs = progress?.positionMs ?: 0L,
         )
         addRecent(item)
-        _state.update { it.copy(screen = AppScreen.Player(request, origin), error = null) }
+        _state.update { it.copy(screen = AppScreen.Player(request, origin, returnFocus), error = null, focusRequest = null) }
     }
 
     fun playAdjacent(delta: Int) {
@@ -383,6 +473,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         startPositionMs = progress?.positionMs ?: 0L,
                     ),
                     origin = screen.origin,
+                    returnFocus = screen.returnFocus,
                 ),
             )
         }
@@ -403,19 +494,86 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 else group
             }
         } else current.favoriteGroups
-        _state.update { it.copy(favorites = nextFavorites, favoriteGroups = nextGroups) }
-        persistFavorites(nextFavorites, nextGroups)
+        val nextOrders = if (exists) {
+            current.favoriteItemOrders.mapValues { (_, order) -> order.filterNot { it == key } }
+        } else current.favoriteItemOrders
+        _state.update {
+            it.copy(
+                favorites = nextFavorites,
+                favoriteGroups = nextGroups,
+                favoriteItemOrders = nextOrders,
+            )
+        }
+        persistFavorites(nextFavorites, nextGroups, nextOrders)
     }
 
     fun isFavorite(item: CatalogItem): Boolean =
         _state.value.favorites.any { itemKey(it) == itemKey(item) }
 
-    fun openFavoriteGroup(groupId: String) = _state.update {
-        it.copy(screen = AppScreen.FavoriteGroupBrowser(groupId), searchQuery = "", error = null)
+    fun selectFavoriteGroup(groupId: String) {
+        val current = _state.value
+        if (groupId in current.hiddenFavoriteGroupIds || groupId !in validFavoriteGroupIds(current.favoriteGroups)) return
+        _state.update {
+            it.copy(
+                screen = if (groupId == "all") AppScreen.Favorites else AppScreen.FavoriteGroupBrowser(groupId),
+                selectedFavoriteGroupId = groupId,
+                searchQuery = "",
+                error = null,
+                focusRequest = FocusRequest(favoriteFocusScope(groupId), firstItem = true),
+            )
+        }
+    }
+
+    fun openFavoriteGroup(groupId: String) = selectFavoriteGroup(groupId)
+
+    fun openFavoriteGroupsManager() = _state.update {
+        it.copy(screen = AppScreen.FavoriteGroupsManager, error = null, focusRequest = null)
     }
 
     fun openFavoriteEditor(groupId: String? = null) = _state.update {
-        it.copy(screen = AppScreen.FavoriteGroupEditor(groupId), error = null)
+        it.copy(screen = AppScreen.FavoriteGroupEditor(groupId), error = null, focusRequest = null)
+    }
+
+    fun saveBuiltInFavoriteGroupAppearance(
+        groupId: String,
+        name: String,
+        icon: String,
+        color: String,
+    ) {
+        if (groupId !in BuiltInFavoriteGroupIds) return
+        val fallback = defaultFavoriteGroupAppearance(groupId)
+        val appearance = FavoriteGroupAppearance(
+            name = name.trim().take(36).ifBlank { fallback.name },
+            icon = icon,
+            color = color,
+        )
+        val appearances = _state.value.favoriteGroupAppearances + (groupId to appearance)
+        _state.update {
+            it.copy(
+                screen = AppScreen.FavoriteGroupsManager,
+                favoriteGroupAppearances = appearances,
+                error = null,
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) { localStateStore.saveFavoriteGroupAppearances(appearances) }
+    }
+
+    fun toggleFavoriteGroupHidden(groupId: String) {
+        val current = _state.value
+        if (groupId !in validFavoriteGroupIds(current.favoriteGroups)) return
+        val hidden = current.hiddenFavoriteGroupIds.toMutableSet().apply {
+            if (!add(groupId)) remove(groupId)
+        }.toSet()
+        val selected = current.selectedFavoriteGroupId.takeIf { it !in hidden }
+            ?: firstVisibleFavoriteGroupId(current.favoriteGroupOrder, hidden)
+        _state.update {
+            it.copy(
+                hiddenFavoriteGroupIds = hidden,
+                selectedFavoriteGroupId = selected,
+                error = null,
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) { localStateStore.saveHiddenFavoriteGroupIds(hidden) }
     }
 
     fun saveFavoriteGroup(
@@ -425,6 +583,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         color: String,
         itemKeys: Set<String>,
     ) {
+        if (groupId in BuiltInFavoriteGroupIds) {
+            saveBuiltInFavoriteGroupAppearance(groupId!!, name, icon, color)
+            return
+        }
         val trimmedName = name.trim().take(36)
         if (trimmedName.isBlank()) {
             _state.update { it.copy(error = "Enter a group name.") }
@@ -442,18 +604,65 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             updatedAt = now,
         )
         val groups = if (existing == null) {
-            (listOf(saved) + _state.value.favoriteGroups).take(24)
+            (_state.value.favoriteGroups + saved).take(24)
         } else {
             _state.value.favoriteGroups.map { if (it.id == saved.id) saved else it }
         }
-        _state.update { it.copy(screen = AppScreen.FavoriteGroupBrowser(saved.id), favoriteGroups = groups, error = null) }
-        persistGroups(groups)
+        val groupOrder = normalizeGroupOrder(
+            _state.value.favoriteGroupOrder + saved.id,
+            groups,
+        )
+        _state.update {
+            it.copy(
+                screen = AppScreen.FavoriteGroupBrowser(saved.id),
+                favoriteGroups = groups,
+                favoriteGroupOrder = groupOrder,
+                selectedFavoriteGroupId = saved.id,
+                error = null,
+                focusRequest = FocusRequest(favoriteFocusScope(saved.id), firstItem = true),
+            )
+        }
+        persistGroups(groups, groupOrder, _state.value.favoriteItemOrders)
     }
 
     fun deleteFavoriteGroup(groupId: String) {
         val groups = _state.value.favoriteGroups.filterNot { it.id == groupId }
-        _state.update { it.copy(screen = AppScreen.Favorites, favoriteGroups = groups, error = null) }
-        persistGroups(groups)
+        val groupOrder = normalizeGroupOrder(
+            _state.value.favoriteGroupOrder.filterNot { it == groupId },
+            groups,
+        )
+        val itemOrders = _state.value.favoriteItemOrders - groupId
+        val hidden = _state.value.hiddenFavoriteGroupIds - groupId
+        val selected = firstVisibleFavoriteGroupId(groupOrder, hidden)
+        _state.update {
+            it.copy(
+                screen = if (selected == "all" || selected.isBlank()) AppScreen.Favorites else AppScreen.FavoriteGroupBrowser(selected),
+                favoriteGroups = groups,
+                favoriteGroupOrder = groupOrder,
+                favoriteItemOrders = itemOrders,
+                hiddenFavoriteGroupIds = hidden,
+                selectedFavoriteGroupId = selected,
+                error = null,
+                focusRequest = selected.takeIf { it.isNotBlank() }?.let { FocusRequest(favoriteFocusScope(it), firstItem = true) },
+            )
+        }
+        persistGroups(groups, groupOrder, itemOrders)
+        viewModelScope.launch(Dispatchers.IO) { localStateStore.saveHiddenFavoriteGroupIds(hidden) }
+    }
+
+    fun saveFavoriteGroupOrder(order: List<String>) {
+        val normalized = normalizeGroupOrder(order, _state.value.favoriteGroups)
+        _state.update { it.copy(favoriteGroupOrder = normalized, error = null) }
+        viewModelScope.launch(Dispatchers.IO) { localStateStore.saveFavoriteGroupOrder(normalized) }
+    }
+
+    fun saveFavoriteItemOrder(groupId: String, order: List<String>) {
+        if (groupId == "all") return
+        val validFavoriteKeys = _state.value.favorites.map(::itemKey).toSet()
+        val normalized = order.filter { it in validFavoriteKeys }.distinct().take(250)
+        val orders = _state.value.favoriteItemOrders + (groupId to normalized)
+        _state.update { it.copy(favoriteItemOrders = orders, error = null) }
+        viewModelScope.launch(Dispatchers.IO) { localStateStore.saveFavoriteItemOrders(orders) }
     }
 
     fun updateSettings(settings: AppSettings) {
@@ -495,6 +704,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun disconnect() {
         client = null
         categoryCache.clear()
+        lastFocusByArea.clear()
         _state.update {
             it.copy(
                 screen = AppScreen.Login,
@@ -508,6 +718,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 selectedCategories = emptyMap(),
                 items = emptyList(),
                 loadedItems = emptyMap(),
+                focusRequest = null,
             )
         }
         viewModelScope.launch(Dispatchers.IO) { credentialsStore.clear() }
@@ -518,14 +729,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun back() {
         when (val screen = _state.value.screen) {
             AppScreen.Login, AppScreen.Home -> Unit
-            is AppScreen.Player -> _state.update { it.copy(screen = screen.origin, error = null) }
-            is AppScreen.Detail -> _state.update { it.copy(screen = screen.origin, detailEpisodes = emptyList(), error = null) }
-            is AppScreen.FavoriteGroupBrowser -> openFavorites()
-            is AppScreen.FavoriteGroupEditor -> {
-                if (screen.groupId != null) openFavoriteGroup(screen.groupId) else openFavorites()
+            is AppScreen.Player -> _state.update {
+                it.copy(screen = screen.origin, error = null, focusRequest = screen.returnFocus)
             }
-            is AppScreen.Catalog, AppScreen.Favorites, AppScreen.Settings -> openHome()
+            is AppScreen.Detail -> _state.update {
+                it.copy(
+                    screen = screen.origin,
+                    detailEpisodes = emptyList(),
+                    detailSelectedSeason = null,
+                    error = null,
+                    focusRequest = screen.returnFocus,
+                )
+            }
+            AppScreen.FavoriteGroupsManager -> openFavorites()
+            is AppScreen.FavoriteGroupEditor -> openFavoriteGroupsManager()
+            is AppScreen.Catalog, AppScreen.Favorites, is AppScreen.FavoriteGroupBrowser, AppScreen.Settings -> openHome()
         }
+    }
+
+    private fun focusForScreen(screen: AppScreen): FocusRequest? = when (screen) {
+        AppScreen.Home -> lastFocusByArea[AREA_HOME]
+        is AppScreen.Catalog -> lastFocusByArea[catalogArea(screen.type)]
+        AppScreen.Favorites, is AppScreen.FavoriteGroupBrowser -> lastFocusByArea[AREA_FAVORITES]
+        is AppScreen.Detail -> lastFocusByArea[detailArea(screen.item.id)]
+        else -> null
     }
 
     private fun currentQueueFor(item: CatalogItem): List<CatalogItem> = when {
@@ -540,15 +767,34 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) { localStateStore.saveRecent(next) }
     }
 
-    private fun persistFavorites(favorites: List<CatalogItem>, groups: List<FavoriteGroup>) {
+    private fun persistFavorites(
+        favorites: List<CatalogItem>,
+        groups: List<FavoriteGroup>,
+        itemOrders: Map<String, List<String>>,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             localStateStore.saveFavorites(favorites)
             localStateStore.saveFavoriteGroups(groups)
+            localStateStore.saveFavoriteItemOrders(itemOrders)
         }
     }
 
-    private fun persistGroups(groups: List<FavoriteGroup>) {
-        viewModelScope.launch(Dispatchers.IO) { localStateStore.saveFavoriteGroups(groups) }
+    private fun persistGroups(
+        groups: List<FavoriteGroup>,
+        groupOrder: List<String>,
+        itemOrders: Map<String, List<String>>,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            localStateStore.saveFavoriteGroups(groups)
+            localStateStore.saveFavoriteGroupOrder(groupOrder)
+            localStateStore.saveFavoriteItemOrders(itemOrders)
+        }
+    }
+
+    private fun normalizeGroupOrder(order: List<String>, groups: List<FavoriteGroup>): List<String> {
+        val valid = BuiltInFavoriteGroupIds + groups.map { it.id }
+        val validSet = valid.toSet()
+        return (order.filter { it in validSet } + valid.filterNot { it in order }).distinct()
     }
 
     private fun updateLoadedItems(type: ContentType, items: List<CatalogItem>) {
@@ -578,6 +824,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         const val CONNECTION_TIMEOUT_MS = 30_000L
     }
 }
+
+internal const val AREA_HOME = "home"
+internal const val AREA_FAVORITES = "favorites"
+
+internal fun catalogArea(type: ContentType): String = "catalog:${type.name}"
+internal fun catalogFocusScope(type: ContentType, categoryId: String): String = "catalog:${type.name}:$categoryId"
+internal fun homeFocusScope(type: ContentType): String = "home:${type.name}"
+internal fun favoriteFocusScope(groupId: String): String = "favorites:$groupId"
+internal fun detailArea(seriesId: String): String = "detail:$seriesId"
+internal fun detailFocusScope(seriesId: String, season: Int?): String = "detail:$seriesId:${season ?: 0}"
+
+internal fun validFavoriteGroupIds(groups: List<FavoriteGroup>): Set<String> =
+    (BuiltInFavoriteGroupIds + groups.map { it.id }).toSet()
+
+internal fun firstVisibleFavoriteGroupId(order: List<String>, hidden: Set<String>): String =
+    (order + BuiltInFavoriteGroupIds).distinct().firstOrNull { it !in hidden }.orEmpty()
 
 private fun Throwable.userMessage(): String = when (this) {
     is TimeoutCancellationException, is SocketTimeoutException ->

@@ -1413,3 +1413,1306 @@ body.video-mode #app,
 .favorite-color-choice.favorite-color-lime { --group-a:#778f32; --group-b:#45551d; }
 .favorite-color-choice.favorite-color-slate { --group-a:#576574; --group-b:#303942; }
 .selection-check { border:1px solid rgba(255,255,255,.13); background:rgba(0,0,0,.36); }
+
+/* v0.6.0 unified Favorites workspace */
+.favorites-hub {
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:0 8px 4px 4px;
+}
+.favorite-groups-static {
+  flex:0 0 auto;
+  min-height:0;
+  margin:0 0 12px;
+}
+.favorite-groups-heading {
+  min-height:60px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  padding:0 4px 10px;
+}
+.favorite-groups-heading h2 {
+  margin:0;
+  font-size:29px;
+  line-height:1.08;
+}
+.favorite-groups-heading p {
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:15px;
+}
+.favorite-groups-heading-actions {
+  display:flex;
+  align-items:center;
+  min-height:50px;
+}
+.favorite-groups-heading-actions > * + * { margin-left:16px; }
+.favorite-groups-heading-actions .secondary-button {
+  min-width:138px;
+  min-height:48px;
+  height:48px;
+  padding:0 20px;
+  border-radius:14px;
+  font-size:16px;
+}
+.favorite-groups-row {
+  width:100%;
+  display:flex;
+  align-items:stretch;
+  gap:16px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:5px 4px 10px;
+  scroll-snap-type:x mandatory;
+  scroll-padding-left:4px;
+  scrollbar-width:none;
+  overscroll-behavior-x:contain;
+}
+.favorite-groups-row::-webkit-scrollbar { display:none; }
+.favorite-group-card {
+  flex:0 0 calc((100% - 64px) / 5);
+  width:calc((100% - 64px) / 5);
+  min-width:0;
+  height:128px;
+  padding:17px 18px;
+  border-radius:19px;
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
+  transition:transform .12s ease-out,box-shadow .12s ease-out,border-color .12s ease-out,filter .12s ease-out;
+}
+.favorite-group-card + .favorite-group-card { margin-left:0; }
+.favorite-group-card .favorite-group-icon {
+  width:46px;
+  height:46px;
+  border-radius:14px;
+}
+.favorite-group-card .favorite-group-svg { width:25px; height:25px; }
+.favorite-group-card .favorite-group-copy strong { font-size:19px; }
+.favorite-group-card .favorite-group-copy small { margin-top:5px; font-size:13px; }
+.favorite-group-card.active {
+  border-color:rgba(var(--accent-rgb),.95);
+  box-shadow:inset 0 0 0 3px rgba(var(--accent-rgb),.92),0 10px 28px rgba(0,0,0,.28);
+}
+.favorite-group-card.moving {
+  filter:saturate(1.12) brightness(1.08);
+  box-shadow:inset 0 0 0 4px #fff,0 18px 44px rgba(0,0,0,.5);
+  transform:translateY(-5px) scale(1.025);
+  z-index:8;
+}
+.favorite-group-card:focus {
+  transform:translateY(-2px);
+  box-shadow:inset 0 0 0 4px rgba(var(--accent-rgb),.98),0 14px 34px rgba(0,0,0,.42);
+}
+.favorite-group-card.active:focus {
+  box-shadow:inset 0 0 0 4px #fff,0 14px 34px rgba(0,0,0,.42);
+}
+.favorite-recent-section {
+  flex:0 0 auto;
+  margin:0 0 12px;
+  overflow:hidden;
+}
+.favorite-recent-section .section-head,
+.favorite-content-section > .section-head {
+  margin:0 4px 9px;
+}
+.favorite-recent-section .section-head h2,
+.favorite-content-section > .section-head h2 {
+  margin:0;
+  font-size:25px;
+}
+.favorite-recent-grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;
+  padding:4px 4px 8px;
+  overflow:hidden;
+}
+.favorite-recent-grid .favorite-mixed-card {
+  height:118px;
+  min-height:118px;
+}
+.favorite-content-section {
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.favorite-content-section > .section-head { flex:0 0 auto; }
+.favorite-grid-status:empty { display:none; }
+.favorite-grid-status:not(:empty) {
+  flex:1 1 auto;
+  min-height:0;
+  display:grid;
+  place-items:center;
+}
+.favorite-grid {
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scroll-behavior:smooth;
+  scrollbar-width:none;
+}
+.favorite-grid::-webkit-scrollbar { display:none; }
+.favorite-grid.virtual-grid-host {
+  padding:4px 4px 4px;
+  scroll-snap-type:y mandatory;
+}
+.favorite-grid .virtual-grid-inner > * { scroll-snap-align:start; }
+.favorite-mixed-card {
+  display:grid;
+  grid-template-columns:92px minmax(0,1fr);
+  grid-template-rows:1fr;
+  align-items:center;
+  min-width:0;
+  padding:14px;
+  border-radius:18px;
+  background:linear-gradient(145deg,rgba(var(--panel-rgb),.98),rgba(var(--panel-rgb),.82));
+  transition:transform .12s ease-out,box-shadow .12s ease-out,border-color .12s ease-out,background .12s ease-out;
+}
+.favorite-mixed-card .favorite-live-art,
+.favorite-mixed-card .favorite-mixed-art {
+  width:76px;
+  height:76px;
+  min-height:76px;
+  align-self:center;
+  border-radius:16px;
+  overflow:hidden;
+}
+.favorite-mixed-card .favorite-live-art { padding:8px; }
+.favorite-mixed-card .favorite-live-logo,
+.favorite-mixed-card .favorite-live-art .channel-logo-fallback {
+  width:60px;
+  height:60px;
+  border-radius:13px;
+  padding:6px;
+}
+.favorite-mixed-card .favorite-live-art .channel-logo-fallback { padding:0; font-size:17px; }
+.favorite-mixed-card .favorite-live-label {
+  right:4px;
+  top:4px;
+  padding:3px 5px;
+  border-radius:5px;
+  font-size:8px;
+}
+.favorite-mixed-card .favorite-mixed-copy {
+  min-width:0;
+  min-height:0;
+  height:auto;
+  padding:0 32px 0 2px;
+  align-self:center;
+}
+.favorite-mixed-card .favorite-mixed-copy strong {
+  display:-webkit-box;
+  max-height:46px;
+  white-space:normal;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  font-size:18px;
+  line-height:1.24;
+}
+.favorite-mixed-card .favorite-mixed-copy span {
+  margin-top:7px;
+  font-size:13px;
+}
+.favorite-card-heart {
+  position:absolute;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#ff7b9d;
+  font-size:20px;
+  line-height:1;
+}
+.favorite-mixed-card:focus {
+  transform:none;
+  border-color:rgba(var(--accent-rgb),.95);
+  box-shadow:inset 0 0 0 4px rgba(var(--accent-rgb),.96),0 10px 26px rgba(0,0,0,.34);
+}
+.favorite-mixed-card.moving {
+  border-color:#fff;
+  background:linear-gradient(145deg,rgba(var(--accent-rgb),.27),rgba(var(--panel-rgb),.96));
+  box-shadow:inset 0 0 0 4px #fff,0 16px 38px rgba(0,0,0,.5);
+  transform:scale(.985);
+  z-index:8;
+}
+.favorite-manager {
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:2px 8px 8px 4px;
+}
+.favorite-manager-header {
+  flex:0 0 auto;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  padding:0 4px 18px;
+}
+.favorite-manager-header h2 { margin:0; font-size:31px; }
+.favorite-manager-header p { margin:8px 0 0; color:var(--muted); font-size:16px; }
+.favorite-manager-header > div:last-child { display:flex; align-items:center; }
+.favorite-manager-header > div:last-child > * + * { margin-left:12px; }
+.favorite-manager-header .primary-button,
+.favorite-manager-header .secondary-button {
+  min-height:50px;
+  height:50px;
+  border-radius:14px;
+  font-size:16px;
+}
+.favorite-manager-list {
+  flex:1 1 auto;
+  min-height:0;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-auto-rows:92px;
+  gap:14px 16px;
+  align-content:start;
+  overflow-y:auto;
+  padding:5px 5px 8px;
+  scroll-snap-type:y mandatory;
+  scrollbar-width:none;
+}
+.favorite-manager-list::-webkit-scrollbar { display:none; }
+.favorite-manager-row {
+  width:100%;
+  height:92px;
+  display:grid;
+  grid-template-columns:58px minmax(0,1fr) auto;
+  align-items:center;
+  padding:14px 18px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  background:rgba(var(--panel-rgb),.9);
+  color:var(--text);
+  text-align:left;
+  scroll-snap-align:start;
+}
+.favorite-manager-row[disabled] { opacity:.78; cursor:default; }
+.favorite-manager-icon {
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  background:linear-gradient(145deg,var(--group-a),var(--group-b));
+}
+.favorite-manager-icon .favorite-group-svg { width:25px; height:25px; }
+.favorite-manager-copy { min-width:0; padding:0 14px; }
+.favorite-manager-copy strong { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:19px; }
+.favorite-manager-copy small { display:block; margin-top:6px; color:var(--muted); font-size:14px; }
+.favorite-manager-action { color:var(--accent); font-size:15px; font-weight:800; }
+.favorite-manager-row.system .favorite-manager-action { color:var(--muted); }
+.favorite-manager-row:focus {
+  transform:none;
+  box-shadow:inset 0 0 0 4px rgba(var(--accent-rgb),.96),0 10px 28px rgba(0,0,0,.35);
+}
+
+
+/* v0.6.0 Favorites stabilization: deterministic focus, uniform cards, and explicit reordering. */
+.favorites-hub,
+.favorite-manager,
+.favorite-item-manager {
+  padding-right:18px;
+}
+.favorites-hub .focusable,
+.favorite-manager .focusable,
+.favorite-item-manager .focusable,
+.favorite-editor .focusable {
+  transition:none !important;
+}
+.favorite-groups-heading-actions {
+  justify-content:flex-end;
+  padding-right:4px;
+  white-space:nowrap;
+}
+.favorite-groups-heading-actions > * + * { margin-left:12px; }
+.favorite-groups-heading-actions .primary-button,
+.favorite-groups-heading-actions .secondary-button {
+  min-width:132px;
+  height:48px;
+  min-height:48px;
+  padding:0 20px;
+  border-radius:14px;
+  font-size:16px;
+}
+.favorite-groups-row {
+  gap:0;
+  scroll-behavior:auto !important;
+  scroll-snap-type:none !important;
+}
+.favorite-group-card + .favorite-group-card { margin-left:16px; }
+.favorite-group-card {
+  scroll-snap-align:none !important;
+  transition:none !important;
+}
+.favorite-group-card .favorite-group-icon,
+.favorite-manager-icon {
+  color:#fff;
+  background:rgba(0,0,0,.2);
+}
+.favorite-group-card.active .favorite-group-icon {
+  background:rgba(0,0,0,.3);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.24);
+}
+.favorite-group-svg {
+  display:block;
+  width:28px;
+  height:28px;
+  overflow:visible;
+  color:inherit;
+}
+.favorite-group-svg path,
+.favorite-group-svg rect,
+.favorite-group-svg circle {
+  vector-effect:non-scaling-stroke;
+}
+.favorite-grid,
+.favorite-grid.virtual-grid-host {
+  scroll-behavior:auto !important;
+  scroll-snap-type:none !important;
+  overscroll-behavior:contain;
+  padding:8px 12px 12px 8px;
+}
+.favorite-grid .virtual-grid-inner > * { scroll-snap-align:none !important; }
+.favorite-grid .favorite-standard-card,
+.favorite-grid .favorite-mixed-card {
+  transition:none !important;
+}
+.favorite-layout-live .channel-tile {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  width:100%;
+  height:100%;
+  padding:20px;
+}
+.favorite-layout-live .channel-top { width:100%; align-items:center; }
+.favorite-layout-live .channel-logo,
+.favorite-layout-live .channel-logo-fallback {
+  flex:0 0 60px;
+  width:60px;
+  height:60px;
+  border-radius:16px;
+}
+.favorite-layout-live .channel-name {
+  margin:0;
+  font-size:18px;
+  line-height:1.2;
+  max-height:44px;
+  white-space:normal;
+}
+.favorite-layout-poster .poster-card {
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100%;
+  min-width:0;
+}
+.favorite-layout-poster .poster-art {
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+}
+.favorite-layout-poster .poster-copy {
+  flex:0 0 78px;
+  height:78px;
+}
+.favorite-layout-mixed .favorite-mixed-card {
+  min-height:160px;
+  height:100%;
+}
+.favorite-recent-grid .favorite-mixed-card {
+  transition:none !important;
+}
+.favorite-content-section > .section-head {
+  padding-right:8px;
+}
+
+/* Clean single-column group manager with compact, consistent actions. */
+.favorite-manager-header { padding-right:4px; }
+.favorite-manager-list {
+  display:flex;
+  flex-direction:column;
+  grid-template-columns:none;
+  grid-auto-rows:auto;
+  gap:0;
+  overflow-y:auto;
+  scroll-behavior:auto;
+  scroll-snap-type:none;
+  padding:4px 6px 20px 4px;
+}
+.favorite-manager-row {
+  flex:0 0 88px;
+  width:100%;
+  height:88px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  padding:12px 14px 12px 16px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:18px;
+  background:rgba(var(--panel-rgb),.9);
+  scroll-snap-align:none;
+}
+.favorite-manager-row + .favorite-manager-row { margin-top:12px; }
+.favorite-manager-summary {
+  min-width:0;
+  display:flex;
+  align-items:center;
+}
+.favorite-manager-icon {
+  flex:0 0 52px;
+  width:52px;
+  height:52px;
+  border-radius:15px;
+  background:linear-gradient(145deg,var(--group-a),var(--group-b));
+}
+.favorite-manager-copy {
+  min-width:0;
+  padding:0 14px;
+}
+.favorite-manager-badge {
+  flex:0 0 auto;
+  margin-left:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.065);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+.favorite-manager-actions {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  margin-left:16px;
+}
+.favorite-manager-actions > * + * { margin-left:9px; }
+.favorite-manager-button {
+  height:44px;
+  min-height:44px;
+  padding:0 15px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:12px;
+  background:rgba(255,255,255,.065);
+  color:var(--text);
+  font-size:14px;
+  font-weight:800;
+}
+.favorite-manager-button.move-button { min-width:96px; }
+.favorite-manager-button:disabled { opacity:.3; }
+.favorite-manager-button:focus {
+  transform:none;
+  border-color:rgba(var(--accent-rgb),.95);
+  box-shadow:inset 0 0 0 3px rgba(var(--accent-rgb),.95),0 8px 20px rgba(0,0,0,.3);
+}
+
+/* Explicit item-order manager. It avoids long-press and virtual-grid re-render churn. */
+.favorite-item-manager {
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:2px 18px 8px 4px;
+}
+.favorite-item-manager-header {
+  flex:0 0 auto;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  padding:0 4px 16px;
+}
+.favorite-item-manager-header h2 { margin:0; font-size:31px; }
+.favorite-item-manager-header p { margin:8px 0 0; color:var(--muted); font-size:16px; }
+.favorite-item-manager-header .secondary-button {
+  min-width:112px;
+  min-height:50px;
+  height:50px;
+  border-radius:14px;
+  font-size:16px;
+}
+.favorite-item-manager-list {
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  scroll-behavior:auto;
+  scrollbar-width:none;
+  padding:4px 6px 24px 4px;
+}
+.favorite-item-manager-list::-webkit-scrollbar { display:none; }
+.favorite-item-manager-row {
+  min-height:82px;
+  display:grid;
+  grid-template-columns:48px 58px minmax(0,1fr) auto;
+  align-items:center;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:17px;
+  background:rgba(var(--panel-rgb),.9);
+}
+.favorite-item-manager-row + .favorite-item-manager-row { margin-top:10px; }
+.favorite-item-position {
+  color:var(--muted);
+  font-size:15px;
+  font-weight:900;
+  text-align:center;
+}
+.favorite-reorder-art {
+  width:52px;
+  height:58px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border-radius:12px;
+  background:rgba(255,255,255,.055);
+}
+.favorite-reorder-art.favorite-reorder-live { height:52px; }
+.favorite-reorder-logo,
+.favorite-reorder-live .channel-logo-fallback {
+  width:46px;
+  height:46px;
+  padding:5px;
+  border-radius:10px;
+  object-fit:contain;
+}
+.favorite-reorder-live .channel-logo-fallback { display:grid; padding:0; font-size:14px; }
+.favorite-reorder-poster {
+  width:52px;
+  height:58px;
+  position:relative;
+  overflow:hidden;
+}
+.favorite-reorder-poster img { width:100%; height:100%; object-fit:cover; }
+.favorite-reorder-poster .poster-fallback { display:grid; }
+.favorite-reorder-poster .poster-fallback span {
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  font-size:12px;
+}
+.favorite-item-manager-copy {
+  min-width:0;
+  padding:0 16px;
+}
+.favorite-item-manager-copy strong {
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:18px;
+}
+.favorite-item-manager-copy small { display:block; margin-top:6px; color:var(--muted); font-size:13px; }
+.favorite-item-manager-actions { display:flex; align-items:center; }
+.favorite-item-manager-actions > * + * { margin-left:9px; }
+
+@media (max-width:1500px) {
+  .favorite-manager-button { padding:0 11px; }
+  .favorite-manager-button.move-button { min-width:86px; }
+}
+
+/* v0.6.0 Favorites regression cleanup: safe areas, uniform cards, and reachable controls. */
+.favorites-hub,
+.favorite-manager,
+.favorite-item-manager {
+  padding:12px 28px 14px 12px;
+}
+.favorite-editor {
+  padding:12px 28px 14px 12px;
+}
+.favorite-groups-heading {
+  min-height:74px;
+  align-items:center;
+  padding:6px 4px 14px;
+}
+.favorite-groups-heading-actions {
+  flex:0 0 auto;
+  padding:4px 2px 0 20px;
+}
+.favorite-groups-heading-actions .primary-button,
+.favorite-groups-heading-actions .secondary-button {
+  min-height:50px;
+  height:50px;
+}
+.favorite-recent-grid {
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;
+  padding:8px 12px 12px 8px;
+}
+.favorite-recent-grid .favorite-mixed-card {
+  width:100%;
+  height:160px;
+  min-height:160px;
+}
+.favorite-content-section > .section-head,
+.favorite-recent-section .section-head {
+  padding-right:12px;
+}
+.favorite-manager-header,
+.favorite-item-manager-header {
+  padding:4px 4px 18px;
+}
+.favorite-manager-select {
+  width:100%;
+  min-width:0;
+  min-height:60px;
+  padding:4px;
+  border:0;
+  border-radius:13px;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+}
+.favorite-manager-select:focus {
+  transform:none;
+  box-shadow:inset 0 0 0 3px rgba(var(--accent-rgb),.96);
+  background:rgba(var(--accent-rgb),.09);
+}
+.favorite-editor-grid.favorite-mixed-grid {
+  padding:8px 12px 12px 8px;
+}
+.favorite-editor-grid .favorite-selection-card.favorite-mixed-card {
+  width:100%;
+  height:100%;
+  min-height:160px;
+}
+.favorite-editor-grid .favorite-selection-card .selection-check {
+  right:10px;
+  top:10px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-mixed-copy {
+  padding-right:44px;
+}
+
+
+/* v0.6.0 Favorites follow-up: identical recent cards, deterministic toolbar focus, and aligned editor cards. */
+.favorite-recent-grid .favorite-standard-card,
+.favorite-recent-grid .favorite-mixed-card {
+  width:100%;
+  min-width:0;
+  margin:0;
+}
+.favorite-recent-grid.favorite-layout-live .channel-tile {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  width:100%;
+  padding:20px;
+}
+.favorite-recent-grid.favorite-layout-live .channel-top {
+  width:100%;
+  align-items:center;
+}
+.favorite-recent-grid.favorite-layout-live .channel-logo,
+.favorite-recent-grid.favorite-layout-live .channel-logo-fallback {
+  flex:0 0 60px;
+  width:60px;
+  height:60px;
+  border-radius:16px;
+}
+.favorite-recent-grid.favorite-layout-live .channel-name {
+  margin:0;
+  font-size:18px;
+  line-height:1.2;
+  max-height:44px;
+  white-space:normal;
+}
+.favorite-recent-grid.favorite-layout-poster .poster-card {
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  min-width:0;
+}
+.favorite-recent-grid.favorite-layout-poster .poster-art {
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+}
+.favorite-recent-grid.favorite-layout-poster .poster-copy {
+  flex:0 0 78px;
+  height:78px;
+}
+.favorite-groups-heading-actions .secondary-button:disabled,
+.favorite-manager-button:disabled {
+  cursor:default;
+}
+.favorite-manager-button.edit-button {
+  min-width:72px;
+  color:var(--accent);
+  border-color:rgba(var(--accent-rgb),.28);
+  background:rgba(var(--accent-rgb),.09);
+}
+.favorite-editor-grid .favorite-selection-card.favorite-mixed-card {
+  display:grid;
+  grid-template-columns:72px minmax(0,1fr);
+  grid-template-rows:1fr;
+  align-items:center;
+  padding:14px 46px 14px 14px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-live-art,
+.favorite-editor-grid .favorite-selection-card .favorite-mixed-art {
+  width:64px;
+  height:64px;
+  min-height:64px;
+  align-self:center;
+  border-radius:14px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-live-art {
+  padding:5px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-live-logo,
+.favorite-editor-grid .favorite-selection-card .favorite-live-art .channel-logo-fallback {
+  width:54px;
+  height:54px;
+  border-radius:12px;
+  padding:5px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-live-art .channel-logo-fallback {
+  padding:0;
+  font-size:16px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-mixed-copy {
+  min-width:0;
+  min-height:64px;
+  height:64px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:0 4px 0 10px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-mixed-copy strong {
+  display:-webkit-box;
+  min-height:40px;
+  max-height:40px;
+  overflow:hidden;
+  white-space:normal;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  font-size:16px;
+  line-height:1.25;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-mixed-copy span {
+  margin-top:5px;
+  font-size:13px;
+  line-height:1.1;
+}
+.favorite-editor-grid .favorite-selection-card .selection-check {
+  right:12px;
+  top:12px;
+}
+
+
+/* v0.6.0 Favorites regression pass: bottom safe area, editable built-ins, and deterministic selection-card alignment. */
+.favorites-hub {
+  padding-bottom:16px;
+}
+.favorite-content-section {
+  padding-bottom:8px;
+}
+.favorite-content-section .favorite-grid.virtual-grid-host {
+  padding-top:8px;
+  padding-right:12px;
+  padding-bottom:32px;
+  padding-left:8px;
+}
+
+/* Every group row exposes the same Edit affordance. */
+.favorite-manager-actions {
+  flex:0 0 auto;
+}
+.favorite-manager-button.edit-button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* The custom-group chooser uses a dedicated card layout instead of inheriting mixed-card geometry. */
+.favorite-editor-grid .favorite-selection-card {
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch;
+  justify-content:flex-start;
+  padding:12px 14px 13px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  background:rgba(var(--panel-rgb),.94);
+  overflow:hidden;
+  position:relative;
+  text-align:left;
+}
+.favorite-editor-grid .favorite-selection-art {
+  flex:0 0 64px;
+  width:100%;
+  height:64px;
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.favorite-editor-grid .favorite-selection-live {
+  border-radius:13px;
+  background:radial-gradient(circle at 72% 20%,rgba(var(--accent-rgb),.25),transparent 42%),linear-gradient(145deg,var(--panel-strong),var(--bg));
+}
+.favorite-editor-grid .favorite-selection-logo,
+.favorite-editor-grid .favorite-selection-art .channel-logo-fallback {
+  flex:0 0 54px;
+  width:54px;
+  height:54px;
+  border-radius:12px;
+  object-fit:contain;
+  padding:5px;
+  background:#e8eff1;
+}
+.favorite-editor-grid .favorite-selection-art .channel-logo-fallback {
+  display:grid;
+  place-items:center;
+  padding:0;
+  color:var(--accent-ink);
+  font-size:16px;
+  font-weight:900;
+}
+.favorite-editor-grid .favorite-selection-poster {
+  width:48px;
+  height:64px;
+  min-height:64px;
+  border-radius:9px;
+  position:relative;
+  overflow:hidden;
+}
+.favorite-editor-grid .favorite-selection-poster img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.favorite-editor-grid .favorite-selection-poster .poster-fallback {
+  display:grid;
+}
+.favorite-editor-grid .favorite-selection-poster .poster-fallback span {
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  font-size:13px;
+}
+.favorite-editor-grid .favorite-selection-copy {
+  flex:1 1 auto;
+  min-width:0;
+  min-height:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  padding-top:8px;
+}
+.favorite-editor-grid .favorite-selection-copy strong {
+  flex:0 0 38px;
+  height:38px;
+  min-height:38px;
+  max-height:38px;
+  display:-webkit-box;
+  overflow:hidden;
+  white-space:normal;
+  text-overflow:ellipsis;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  font-size:15px;
+  line-height:19px;
+}
+.favorite-editor-grid .favorite-selection-copy span {
+  flex:0 0 auto;
+  margin-top:auto;
+  padding-top:4px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:14px;
+}
+.favorite-editor-grid .favorite-selection-card .selection-check {
+  right:10px;
+  top:10px;
+}
+
+/* Built-in groups can be customized without changing their automatic membership rules. */
+.favorite-system-editor-note {
+  display:flex;
+  flex-direction:column;
+  margin-top:20px;
+  padding:15px 16px;
+  border:1px solid rgba(var(--accent-rgb),.2);
+  border-radius:15px;
+  background:rgba(var(--accent-rgb),.07);
+}
+.favorite-system-editor-note strong {
+  color:var(--accent);
+  font-size:16px;
+}
+.favorite-system-editor-note span {
+  margin-top:5px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.35;
+}
+.favorite-system-editor-content {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:32px;
+}
+.favorite-system-preview {
+  --group-a:#8653dd;
+  --group-b:#4b2c92;
+  width:520px;
+  min-height:220px;
+  display:flex;
+  align-items:center;
+  padding:34px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:26px;
+  background:linear-gradient(145deg,var(--group-a),var(--group-b));
+  box-shadow:0 24px 64px rgba(0,0,0,.32);
+}
+.favorite-system-preview .favorite-group-icon {
+  flex:0 0 76px;
+  width:76px;
+  height:76px;
+  margin-right:24px;
+  border-radius:21px;
+  color:#fff;
+  background:rgba(0,0,0,.22);
+}
+.favorite-system-preview .favorite-group-svg {
+  width:40px;
+  height:40px;
+}
+.favorite-system-preview > div {
+  min-width:0;
+}
+.favorite-system-preview strong {
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#fff;
+  font-size:30px;
+}
+.favorite-system-preview span {
+  display:block;
+  margin-top:10px;
+  color:rgba(255,255,255,.78);
+  font-size:16px;
+}
+
+/* v0.6.0 Favorites polish pass: exact grid window and shared catalog cards. */
+/* With two declared visible rows, the virtual grid measures both rows to the
+   available viewport. Keep only normal inset padding so no third row peeks in. */
+.favorite-content-section .favorite-grid.virtual-grid-host {
+  padding:8px 12px 8px 8px;
+  scroll-padding:8px 12px 8px 8px;
+}
+
+/* The Choose Favorites surface reuses the same channel and poster components
+   as Live TV, Movies, and Series. Only the selection indicator is additive. */
+.favorite-editor-grid .favorite-selection-card {
+  width:100%;
+  min-width:0;
+  height:100%;
+  min-height:0;
+  position:relative;
+  overflow:hidden;
+  text-align:left;
+}
+.favorite-editor-grid.catalog-live .favorite-selection-card.channel-tile,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.channel-tile {
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+  padding:20px !important;
+}
+.favorite-editor-grid.catalog-live .favorite-selection-card.channel-tile .channel-top,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.channel-tile .channel-top {
+  width:100%;
+  align-items:center;
+}
+.favorite-editor-grid.catalog-live .favorite-selection-card.channel-tile .channel-logo,
+.favorite-editor-grid.catalog-live .favorite-selection-card.channel-tile .channel-logo-fallback,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.channel-tile .channel-logo,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.channel-tile .channel-logo-fallback {
+  flex:0 0 60px;
+  width:60px;
+  height:60px;
+  border-radius:16px;
+}
+.favorite-editor-grid.catalog-live .favorite-selection-card.channel-tile .channel-name,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.channel-tile .channel-name {
+  margin:0;
+  font-size:18px;
+  line-height:1.2;
+  max-height:44px;
+  white-space:normal;
+  overflow:hidden;
+}
+.favorite-editor-grid.catalog-movies .favorite-selection-card.poster-card,
+.favorite-editor-grid.catalog-series .favorite-selection-card.poster-card,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.poster-card {
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:flex-start !important;
+  padding:0 !important;
+}
+.favorite-editor-grid.catalog-movies .favorite-selection-card.poster-card .poster-art,
+.favorite-editor-grid.catalog-series .favorite-selection-card.poster-card .poster-art,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.poster-card .poster-art {
+  flex:1 1 auto;
+  width:100%;
+  height:auto;
+  min-height:0;
+}
+.favorite-editor-grid.catalog-movies .favorite-selection-card.poster-card .poster-copy,
+.favorite-editor-grid.catalog-series .favorite-selection-card.poster-card .poster-copy,
+.favorite-editor-grid.favorite-editor-standard-mixed .favorite-selection-card.poster-card .poster-copy {
+  flex:0 0 78px;
+  width:100%;
+  height:78px;
+  padding:12px 14px 10px;
+}
+.favorite-editor-grid .favorite-selection-card .favorite-badge {
+  display:none;
+}
+.favorite-editor-grid .favorite-selection-card .selection-check {
+  display:grid;
+  right:11px;
+  top:11px;
+  z-index:7;
+}
+.favorite-editor-grid .favorite-selection-card.selected {
+  border-color:rgba(var(--accent-rgb),.95);
+  box-shadow:inset 0 0 0 4px rgba(var(--accent-rgb),.9);
+}
+.favorite-editor-grid .favorite-selection-card:focus {
+  transform:none;
+  border-color:rgba(var(--accent-rgb),.98);
+  box-shadow:inset 0 0 0 4px rgba(var(--accent-rgb),.98),0 10px 24px rgba(0,0,0,.34);
+}
+
+/* Built-in membership is automatic, so its editor is appearance-only.
+   Keep the editor panel in the same left column and at the same width as a
+   custom group editor so both workflows have identical visual alignment. */
+.favorite-editor.favorite-editor-system {
+  grid-template-columns:420px minmax(0,1fr);
+  justify-content:stretch;
+  gap:27px;
+}
+.favorite-editor.favorite-editor-system .favorite-editor-settings {
+  width:auto;
+}
+.favorite-system-editor-note,
+.favorite-system-editor-content {
+  display:none !important;
+}
+
+/* v0.6.0 living-room scale, hidden groups, and navigation polish. */
+/* Increase legibility without changing catalog column counts or virtual-grid row counts. */
+.topbar h1 { font-size:42px; }
+.logo { font-size:35px; }
+.nav-item {
+  height:70px;
+  font-size:23px;
+  border-radius:18px;
+}
+.nav-item .nav-icon {
+  width:33px;
+  height:33px;
+  flex-basis:33px;
+}
+.nav-svg { width:29px; height:29px; }
+.section h2,
+.favorite-groups-heading h2 { font-size:32px; }
+.section-meta { font-size:18px; }
+.favorite-groups-heading p { font-size:17px; }
+.primary-button,
+.secondary-button,
+.danger-button {
+  min-height:64px;
+  padding-left:28px;
+  padding-right:28px;
+  border-radius:17px;
+  font-size:21px;
+}
+.field span { font-size:17px; }
+.field input,
+.field select {
+  height:66px;
+  font-size:21px;
+}
+.category-button { font-size:20px; }
+.search-box { font-size:21px; }
+.result-count { font-size:18px; }
+.channel-name { font-size:21px; }
+.channel-number { font-size:15px; }
+.poster-copy strong { font-size:19px; }
+.poster-copy span { font-size:15px; }
+.shortcut-card strong { font-size:25px; }
+.shortcut-card small { font-size:17px; }
+.hero h2 { font-size:52px; }
+.hero p { font-size:22px; }
+.settings-card h3 { font-size:26px; }
+.settings-card p { font-size:18px; }
+.detail-plot { font-size:22px; }
+.meta-chip { font-size:17px; }
+.episode-card strong { font-size:20px; }
+.episode-card p { font-size:16px; }
+
+.favorite-groups-heading-actions .primary-button,
+.favorite-groups-heading-actions .secondary-button {
+  min-width:142px;
+  min-height:54px;
+  height:54px;
+  padding:0 22px;
+  font-size:18px;
+}
+.favorite-group-card .favorite-group-copy strong { font-size:21px; }
+.favorite-group-card .favorite-group-copy small { font-size:15px; }
+.favorite-content-section > .section-head h2 { font-size:29px; }
+.favorite-manager-header h2,
+.favorite-item-manager-header h2 { font-size:34px; }
+.favorite-manager-header p,
+.favorite-item-manager-header p { font-size:18px; }
+.favorite-manager-row {
+  flex-basis:94px;
+  height:94px;
+}
+.favorite-manager-copy strong { font-size:21px; }
+.favorite-manager-copy small { font-size:15px; }
+.favorite-manager-button {
+  min-height:48px;
+  height:48px;
+  padding:0 15px;
+  font-size:16px;
+}
+.favorite-manager-button.move-button { min-width:104px; }
+.favorite-manager-button.visibility-button { min-width:82px; }
+.favorite-manager-row.hidden-group {
+  border-style:dashed;
+  opacity:.74;
+}
+.favorite-manager-row.hidden-group:focus-within { opacity:1; }
+.favorite-manager-badge.hidden-badge {
+  color:var(--accent);
+  background:rgba(var(--accent-rgb),.14);
+  border:1px solid rgba(var(--accent-rgb),.28);
+}
+.favorite-all-hidden {
+  display:grid;
+  place-items:center;
+}
+.favorite-editor-heading h2 { font-size:34px; }
+.favorite-editor-heading p { font-size:17px; }
+.favorite-editor-label { font-size:17px; }
+.favorite-editor-content h3 { font-size:31px; }
+.favorite-editor-content header p { font-size:17px; }
+.favorite-filter-chip {
+  min-width:100px;
+  height:49px;
+  font-size:18px;
+}
+
+/* Preserve the existing five-card group shelf and all catalog grid geometry. */
+.favorite-group-card { height:128px; }
+.catalog-live .channel-name,
+.favorite-layout-live .channel-name { font-size:20px; }
+.catalog-movies .poster-copy,
+.catalog-series .poster-copy,
+.favorite-layout-poster .poster-copy { flex-basis:80px; height:80px; }
+
+/* v0.6.0 Home history polish and stable manager focus. */
+
+/* v0.6.0 Home/category navigation regression cleanup. */
+/* v0.6.0 poster focus DOM overlay correction. */
+/* A real final-child overlay is promoted above poster artwork by the legacy
+   webOS compositor. It is visual-only and does not affect layout or input. */
+.poster-focus-ring {
+  position:absolute;
+  top:0;
+  right:0;
+  bottom:0;
+  left:0;
+  z-index:30;
+  display:block;
+  box-sizing:border-box;
+  border:4px solid transparent;
+  border-radius:inherit;
+  pointer-events:none;
+  opacity:0;
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
+}
+
+.poster-card:focus,
+.poster-card.is-focused {
+  border-color:transparent;
+  outline:none;
+  box-shadow:0 7px 18px rgba(0,0,0,.28);
+}
+
+.poster-card:focus > .poster-focus-ring,
+.poster-card.is-focused > .poster-focus-ring {
+  border-color:rgba(var(--accent-rgb),.98);
+  opacity:1;
+}
+
+/* v0.6.0 transparent in-app brand lockup. */
+.logo .brand-wordmark,
+.player-brand .brand-wordmark,
+.brand-lockup .brand-wordmark {
+  display:block;
+  object-fit:contain;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.logo .brand-wordmark {
+  width:196px;
+  height:47px;
+  margin:0;
+}
+.player-brand .brand-wordmark {
+  width:190px;
+  height:43px;
+  margin:0;
+}
+.brand-lockup {
+  flex-direction:column;
+  align-items:flex-start;
+  gap:18px;
+}
+.brand-lockup .brand-wordmark {
+  width:560px;
+  height:auto;
+}
+.brand-lockup > span {
+  margin:0;
+}
+
+/* v0.6.0 exact app-icon mark and poster-fit correction. */
+/* Preserve the complete provider artwork inside Movie and Series cards.
+   The surrounding card geometry and focus overlay remain unchanged. */
+.poster-art img,
+.favorite-mixed-art img,
+.favorite-reorder-poster img,
+.favorite-selection-poster img {
+  object-fit:contain;
+  background:rgba(var(--panel-rgb),.45);
+}

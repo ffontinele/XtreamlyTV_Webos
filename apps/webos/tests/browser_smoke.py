@@ -6,10 +6,12 @@ Run from the repository root:
   python apps/webos/tests/browser_smoke.py
 """
 from pathlib import Path
+import json
 import os
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1] / "app"
+APP_VERSION = json.loads((ROOT / "appinfo.json").read_text(encoding="utf-8"))["version"]
 
 
 def inline_app() -> str:
@@ -27,7 +29,8 @@ def inline_app() -> str:
     scripts = []
     for filename in script_files:
         content = (ROOT / "js" / filename).read_text(encoding="utf-8")
-        scripts.append(f"<script>{content.replace('</script>', '<\\/script>')}</script>")
+        escaped_content = content.replace('</script>', '<\\/script>')
+        scripts.append('<script>' + escaped_content + '</script>')
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         f"<style>{css}</style></head><body>"
@@ -99,7 +102,7 @@ def main() -> None:
         assert page.evaluate("document.activeElement.dataset.homeRow") == "0"
         assert page.evaluate("document.querySelector('.scroll-view').scrollTop") < 40
 
-        # Favorites combine top-row filters, built-in/custom groups, and a group rail.
+        # Favorites use a persistent, reordered group shelf above the selected group's cards.
         custom_group_id = page.evaluate("""() => {
             const live = XtreamlyTVMock.liveStreams[0];
             const movie = XtreamlyTVMock.vodStreams[0];
@@ -118,45 +121,138 @@ def main() -> None:
             });
             XtreamlyTVApp.state = XtreamlyTVStore.getState();
             XtreamlyTVApp.favoriteMode = 'home';
-            XtreamlyTVApp.favoriteFilter = 'all';
+            XtreamlyTVApp.favoriteGroupId = 'all';
             XtreamlyTVApp.renderShell('favorites');
             return group.id;
         }""")
-        assert page.locator('[data-favorite-home-filter]').all_inner_texts() == ['All', 'Live TV', 'Movies', 'Series']
+        assert page.locator('.favorites-hub > .favorite-groups-static').count() == 1
+        assert page.locator('[data-favorite-home-filter]').count() == 0
+        assert page.locator('#browseFavorites').count() == 0
+        assert page.locator('#editFavoriteGroups').inner_text() == 'Edit groups'
         group_names = page.locator('[data-favorite-group] .favorite-group-copy strong').all_inner_texts()
         assert group_names[:4] == ['All Favorites', 'Live TV', 'Movies', 'Series']
         assert 'Weekend Picks' in group_names
-        assert page.locator('.favorite-groups-row #addFavoriteGroupCard').count() == 1
-        assert 'Recently watched favorites' in page.locator('.favorites-home').inner_text()
+        assert page.locator('.favorite-groups-row #addFavoriteGroupCard').count() == 0
+        assert page.locator('.favorite-recent-section').count() == 0
+        assert page.locator('[data-favorite-group="all"].active').count() == 1
+
+        # Five complete group cards fit the viewport; the sixth starts beyond the viewport.
+        group_geometry = page.evaluate("""() => {
+            const row = document.querySelector('#favoriteGroupsRow');
+            const cards = Array.from(row.querySelectorAll('[data-favorite-group]'));
+            const rowRect = row.getBoundingClientRect();
+            return {
+                firstFiveComplete: cards.slice(0, 5).every(card => card.getBoundingClientRect().right <= rowRect.right + 1),
+                sixthOutside: !cards[5] || cards[5].getBoundingClientRect().right > rowRect.right + 1
+            };
+        }""")
+        assert group_geometry['firstFiveComplete'] is True
+        assert group_geometry['sixthOutside'] is True
 
         page.click(f'[data-favorite-group="{custom_group_id}"]')
-        assert page.locator('.favorite-group-header h2').inner_text() == 'Weekend Picks'
-        assert page.locator('.favorite-group-button').count() >= 5
-        assert page.evaluate('XtreamlyTVApp.virtualGrid.columns') == 5
-        assert page.evaluate('XtreamlyTVApp.virtualGrid.visibleRows') == 2
-        page.locator('#favoriteGrid [data-content-type="movie"]').click()
-        page.wait_for_selector('#playMovie')
-        page.click('#closeDetail')
-        assert page.locator('.favorite-group-header h2').inner_text() == 'Weekend Picks'
-        page.click('[data-favorite-filter="live"]')
+        assert page.locator(f'[data-favorite-group="{custom_group_id}"].active').count() == 1
+        assert page.locator('.favorite-content-section .section-head h2').inner_text() == 'Weekend Picks'
+        assert page.locator('.favorite-recent-section').count() == 0
         assert page.evaluate('XtreamlyTVApp.virtualGrid.columns') == 4
-        assert page.locator('#favoriteGrid .channel-tile').count() >= 1
-        page.click('#editFavoriteGroup')
+        assert page.evaluate('XtreamlyTVApp.virtualGrid.visibleRows') == 3
+        assert page.locator('#favoriteGrid [data-content-type="movie"]').count() >= 1
+
+        # The virtual grid measures an exact number of complete rows.
+        grid_geometry = page.evaluate("""() => {
+            const grid = XtreamlyTVApp.virtualGrid;
+            const style = getComputedStyle(grid.container);
+            const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+            const used = grid.visibleRows * grid.rowHeight + (grid.visibleRows - 1) * grid.gap + padding;
+            return {used, viewport:grid.container.clientHeight};
+        }""")
+        assert abs(grid_geometry['used'] - grid_geometry['viewport']) <= 4
+
+        # Favorites regressions: cards are uniform and actions respect the safe area.
+        page.click('[data-favorite-group="all"]')
+        card_geometry = page.evaluate("""() => {
+            const recent = document.querySelector('.favorite-recent-grid .favorite-mixed-card');
+            const main = document.querySelector('#favoriteGrid .favorite-mixed-card');
+            const actions = document.querySelector('.favorite-groups-heading-actions').getBoundingClientRect();
+            const view = document.querySelector('.view').getBoundingClientRect();
+            return {
+                recentHeight: recent.getBoundingClientRect().height,
+                mainHeight: main.getBoundingClientRect().height,
+                rightInset: view.right - actions.right
+            };
+        }""")
+        assert abs(card_geometry['recentHeight'] - card_geometry['mainHeight']) <= 1
+        assert card_geometry['rightInset'] >= 20
+        assert page.locator('#reorderFavoriteItems').count() == 0
+
+        # Reordering is explicit and custom-group summaries open the editor.
+        page.click(f'[data-favorite-group="{custom_group_id}"]')
+        page.click('#editFavoriteGroups')
+        page.locator('#favoriteManagerAdd').focus()
+        page.keyboard.press('ArrowDown')
+        assert page.locator('.favorite-manager-row').first.locator(':focus').count() == 1
+        page.keyboard.press('ArrowUp')
+        assert page.evaluate("document.activeElement.id") in {'favoriteManagerBack', 'favoriteManagerAdd'}
+
+        old_group_index = page.evaluate("id => XtreamlyTVStore.getState().favoriteGroupOrder.indexOf(id)", custom_group_id)
+        page.click(f'[data-manager-group="{custom_group_id}"][data-manager-move="-1"]')
+        new_group_index = page.evaluate("id => XtreamlyTVStore.getState().favoriteGroupOrder.indexOf(id)", custom_group_id)
+        assert new_group_index == old_group_index - 1
+
+        page.click(f'[data-manager-items="{custom_group_id}"]')
+        page.locator('#favoriteItemManagerBack').focus()
+        page.keyboard.press('ArrowDown')
+        assert page.locator('.favorite-item-manager-row').first.locator(':focus').count() == 1
+        page.keyboard.press('ArrowUp')
+        assert page.evaluate("document.activeElement.id") == 'favoriteItemManagerBack'
+        first_key = page.locator('[data-item-manager-row]').first.get_attribute('data-item-manager-row')
+        page.click(f'[data-item-manager-key="{first_key}"][data-item-manager-move="1"]')
+        saved_item_order = page.evaluate("id => XtreamlyTVStore.getState().favoriteItemOrders[id]", custom_group_id)
+        assert saved_item_order[1] == first_key
+        page.click('#favoriteItemManagerBack')
+
+        page.click(f'[data-manager-edit="{custom_group_id}"]')
         assert page.locator('#favoriteGroupName').input_value() == 'Weekend Picks'
         assert page.locator('#favoriteSelectionCount').inner_text() == '2'
+        page.locator('#cancelFavoriteEditorTop').focus()
+        page.keyboard.press('ArrowDown')
+        assert page.evaluate("document.activeElement.id") == 'favoriteGroupName'
+        assert page.evaluate("XtreamlyTVApp.virtualGrid.columns") == 4
+        assert page.evaluate("XtreamlyTVApp.virtualGrid.visibleRows") == 4
+        selection_geometry = page.evaluate("""() => {
+            const card = document.querySelector('.favorite-selection-card');
+            const art = card.querySelector('.favorite-live-art,.favorite-mixed-art');
+            return {
+                cardHeight: card.getBoundingClientRect().height,
+                artHeight: art.getBoundingClientRect().height,
+                isCompact: card.classList.contains('favorite-mixed-card')
+            };
+        }""")
+        assert selection_geometry['isCompact'] is True
+        assert selection_geometry['cardHeight'] < 200
+        assert selection_geometry['artHeight'] <= 80
         page.click('#cancelFavoriteEditor')
-        assert page.locator('.favorite-group-header h2').inner_text() == 'Weekend Picks'
+        assert page.locator('.favorite-manager').count() == 1
+        page.click('#favoriteManagerBack')
+        assert page.locator(f'[data-favorite-group="{custom_group_id}"].active').count() == 1
 
-        # Removing a favorite also removes stale membership from custom collections.
+        # Recently watched favorites return only at the All Favorites top level.
+        page.click('[data-favorite-group="all"]')
+        assert page.locator('.favorite-recent-section').count() == 0
+        # Removing a favorite also removes stale membership and saved ordering.
         page.evaluate("""id => {
             const live = XtreamlyTVMock.liveStreams[0];
             XtreamlyTVStore.toggleFavorite(live, 'live');
             XtreamlyTVApp.state = XtreamlyTVStore.getState();
         }""", custom_group_id)
         assert page.evaluate("""id => {
-            const group = XtreamlyTVStore.getState().favoriteGroups.find(entry => entry.id === id);
-            return group.itemKeys.some(key => key.startsWith('live:'));
-        }""", custom_group_id) is False
+            const state = XtreamlyTVStore.getState();
+            const group = state.favoriteGroups.find(entry => entry.id === id);
+            const liveKey = XtreamlyTVStore.favoriteKey('live', XtreamlyTVMock.liveStreams[0].stream_id);
+            return {
+                member:group.itemKeys.includes(liveKey),
+                ordered:(state.favoriteItemOrders[id] || []).includes(liveKey)
+            };
+        }""", custom_group_id) == {'member': False, 'ordered': False}
 
         page.evaluate("""() => {
             XtreamlyTVApp.favoriteMode = 'home';
@@ -242,7 +338,7 @@ def main() -> None:
         page.click("#closeSeries")
         page.click('[data-view="settings"]')
         assert page.locator('#providerPassword').get_attribute('type') == 'password'
-        assert page.locator('.about-list').inner_text().find('0.5.1') >= 0
+        assert APP_VERSION in page.locator('.about-list').inner_text()
         page.click('[data-view="live"]')
         page.click('[data-catalog-category="2"]')
         page.wait_for_selector("#catalogGrid .channel-tile")

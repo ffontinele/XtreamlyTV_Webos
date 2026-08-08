@@ -4,7 +4,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,25 +86,18 @@ fun AppBackground(content: @Composable () -> Unit) {
 
 @Composable
 fun BrandLockup(iconSize: Dp = 34.dp, wordmarkSize: Int = 18) {
-    val colors = palette()
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Image(
-            painter = painterResource(R.drawable.xtreamlytv_mark),
-            contentDescription = null,
-            modifier = Modifier.size(iconSize),
-            contentScale = ContentScale.Fit,
-        )
-        Spacer(Modifier.width(2.dp))
-        Text(
-            text = "treamlyTV",
-            color = colors.text,
-            fontSize = wordmarkSize.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-    }
+    val lockupHeight = maxOf(iconSize.value, wordmarkSize * 1.35f).dp
+    Image(
+        painter = painterResource(R.drawable.xtreamlytv_wordmark_baseline),
+        contentDescription = "XtreamlyTV",
+        modifier = Modifier
+            .height(lockupHeight)
+            .width(lockupHeight * 4.184f),
+        contentScale = ContentScale.Fit,
+    )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TvSurface(
     modifier: Modifier = Modifier,
@@ -112,6 +107,9 @@ fun TvSurface(
     radius: Dp = 12.dp,
     background: Color? = null,
     focusRequester: FocusRequester? = null,
+    onLongClick: (() -> Unit)? = null,
+    longClickLabel: String? = null,
+    onFocused: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val colors = palette()
@@ -125,14 +123,27 @@ fun TvSurface(
         label = "tvSurfaceFill",
     )
     val requesterModifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
+    val activationModifier = if (onLongClick == null) {
+        Modifier.clickable(enabled = enabled, onClick = onClick)
+    } else {
+        Modifier.combinedClickable(
+            enabled = enabled,
+            onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = longClickLabel,
+        )
+    }
     Box(
         modifier
             .then(requesterModifier)
             .clip(RoundedCornerShape(radius))
             .background(fill)
             .border(if (focused) 2.dp else 1.dp, border, RoundedCornerShape(radius))
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(enabled = enabled, onClick = onClick)
+            .onFocusChanged { focusState ->
+                focused = focusState.isFocused
+                if (focusState.isFocused) onFocused?.invoke()
+            }
+            .then(activationModifier)
             .focusable(enabled),
     ) { content() }
 }
@@ -146,6 +157,7 @@ fun TvButton(
     enabled: Boolean = true,
     leading: String? = null,
     focusRequester: FocusRequester? = null,
+    onFocused: (() -> Unit)? = null,
 ) {
     val colors = palette()
     val background = when (style) {
@@ -165,6 +177,7 @@ fun TvButton(
         background = Color.Transparent,
         radius = 11.dp,
         focusRequester = focusRequester,
+        onFocused = onFocused,
     ) {
         Row(
             modifier = Modifier
@@ -297,6 +310,8 @@ fun TvChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    onFocused: (() -> Unit)? = null,
 ) {
     val colors = palette()
     TvSurface(
@@ -304,6 +319,8 @@ fun TvChip(
         onClick = onClick,
         active = selected,
         radius = 17.dp,
+        focusRequester = focusRequester,
+        onFocused = onFocused,
     ) {
         Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
             Text(
@@ -333,9 +350,15 @@ fun LiveItemCard(
     modifier: Modifier = Modifier,
     cardHeight: Dp = 76.dp,
     focusRequester: FocusRequester? = null,
+    onFocused: (() -> Unit)? = null,
 ) {
     val colors = palette()
-    TvSurface(modifier = modifier.height(cardHeight), onClick = onClick, focusRequester = focusRequester) {
+    TvSurface(
+        modifier = modifier.height(cardHeight),
+        onClick = onClick,
+        focusRequester = focusRequester,
+        onFocused = onFocused,
+    ) {
         Row(
             Modifier.fillMaxSize().padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -372,9 +395,15 @@ fun PosterItemCard(
     modifier: Modifier = Modifier,
     cardHeight: Dp = 188.dp,
     focusRequester: FocusRequester? = null,
+    onFocused: (() -> Unit)? = null,
 ) {
     val colors = palette()
-    TvSurface(modifier = modifier.height(cardHeight), onClick = onClick, focusRequester = focusRequester) {
+    TvSurface(
+        modifier = modifier.height(cardHeight),
+        onClick = onClick,
+        focusRequester = focusRequester,
+        onFocused = onFocused,
+    ) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 Artwork(item = item, modifier = Modifier.fillMaxSize(), live = false)
@@ -425,7 +454,7 @@ fun Artwork(item: CatalogItem, modifier: Modifier, live: Boolean) {
                 model = item.imageUrl,
                 contentDescription = item.name,
                 modifier = Modifier.fillMaxSize().padding(if (live) 4.dp else 0.dp),
-                contentScale = if (live) ContentScale.Fit else ContentScale.Crop,
+                contentScale = ContentScale.Fit,
             )
         } else {
             Text(

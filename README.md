@@ -9,17 +9,17 @@ XtreamlyTV is an open-source, remote-first IPTV client for living-room televisio
 | Platform | Status | Package | Playback |
 |---|---|---|---|
 | LG webOS TV | Beta; daily-driver testing | `.ipk` | Native webOS HTML media surface |
-| Android TV / Google TV | 0.5 parity candidate; device validation required | `.apk` | AndroidX Media3 ExoPlayer |
+| Android TV / Google TV | 0.6 synchronized Favorites candidate; device validation required | `.apk` | AndroidX Media3 ExoPlayer |
 | Local browser demo | Development only | Static files | Browser media support |
 
-The Android TV target is a native Kotlin/Compose implementation of the same XtreamlyTV product experience established on webOS. The 0.5 implementation aligns the information architecture, visual language, local-first data model, and feature expectations while retaining platform-native playback and UI. It remains a parity candidate until the Android build and full TV navigation pass are completed on physical hardware.
+The Android TV target is a native Kotlin/Compose implementation of the same XtreamlyTV product experience established on webOS. Version 0.6 establishes one shared TV experience across both platforms, including explicit Favorites managers, group visibility and appearance controls, exact return-focus restoration, type-specific watch-history rails, and immediate branded startup while retaining platform-native playback and UI.
 
 ## Features
 
 - Xtream provider authentication
 - Category-scoped Live TV, VOD, and Series browsing
 - Virtualized large-catalog navigation
-- Favorite groups, media filter chips, and recently watched favorites
+- Unified favorite groups, custom collections, long-press ordering, and recently watched favorites
 - Movie and episode resume positions on webOS and Android TV
 - Live HLS/MPEG-TS fallback on both TV platforms
 - Native Media3 playback on Android TV
@@ -76,7 +76,7 @@ npm run build:webos
 Output:
 
 ```text
-dist/webos/com.github.xtreamlytv.webos_0.5.1_all.ipk
+dist/webos/com.github.xtreamlytv.webos_0.6.0_all.ipk
 ```
 
 ### Build Android TV
@@ -109,6 +109,7 @@ apps/android-tv/app/build/outputs/apk/debug/app-debug.apk
 - [Release process](docs/releasing.md)
 - [Roadmap](docs/roadmap.md)
 - [Brand assets](docs/brand.md)
+- [0.6.0 release notes](docs/release-notes/0.6.0.md)
 - [0.5.1 release notes](docs/release-notes/0.5.1.md)
 - [0.5.0 release notes](docs/release-notes/0.5.0.md)
 - [0.4.1 release notes](docs/release-notes/0.4.1.md)

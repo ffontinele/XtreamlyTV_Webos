@@ -6,6 +6,7 @@ import com.xtreamlytv.androidtv.model.AppTheme
 import com.xtreamlytv.androidtv.model.CatalogItem
 import com.xtreamlytv.androidtv.model.ContentType
 import com.xtreamlytv.androidtv.model.FavoriteGroup
+import com.xtreamlytv.androidtv.model.FavoriteGroupAppearance
 import com.xtreamlytv.androidtv.model.PlaybackProgress
 import com.xtreamlytv.androidtv.model.StreamFormat
 import org.json.JSONArray
@@ -20,6 +21,8 @@ class LocalStateStore(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     fun load(): LocalAppState = runCatching {
+        val groups = parseGroups(preferences.getString(KEY_GROUPS, null)).take(24)
+        val validGroupIds = DEFAULT_GROUP_ORDER + groups.map { it.id }
         LocalAppState(
             settings = AppSettings(
                 theme = AppTheme.fromId(preferences.getString(KEY_THEME, null)),
@@ -27,7 +30,16 @@ class LocalStateStore(context: Context) {
                 maxCachedCategories = preferences.getInt(KEY_CACHE_SIZE, DEFAULT_CACHE_SIZE).coerceIn(2, 5),
             ),
             favorites = parseItems(preferences.getString(KEY_FAVORITES, null)).distinctBy(::itemKey).take(250),
-            favoriteGroups = parseGroups(preferences.getString(KEY_GROUPS, null)).take(24),
+            favoriteGroups = groups,
+            favoriteGroupOrder = normalizeOrder(
+                parseStringArray(preferences.getString(KEY_GROUP_ORDER, null)),
+                validGroupIds,
+            ),
+            favoriteItemOrders = parseOrderMap(preferences.getString(KEY_ITEM_ORDERS, null)),
+            favoriteGroupAppearances = parseAppearanceMap(preferences.getString(KEY_GROUP_APPEARANCES, null)),
+            hiddenFavoriteGroupIds = parseStringArray(preferences.getString(KEY_HIDDEN_GROUPS, null))
+                .filter { it in validGroupIds }
+                .toSet(),
             recent = parseItems(preferences.getString(KEY_RECENT, null)).distinctBy(::itemKey).take(40),
             progress = parseProgress(preferences.getString(KEY_PROGRESS, null)),
         )
@@ -49,6 +61,44 @@ class LocalStateStore(context: Context) {
         val array = JSONArray()
         groups.take(24).forEach { group -> array.put(groupToJson(group)) }
         preferences.edit().putString(KEY_GROUPS, array.toString()).apply()
+    }
+
+    fun saveFavoriteGroupOrder(order: List<String>) {
+        val array = JSONArray()
+        order.distinct().take(28).forEach { array.put(it) }
+        preferences.edit().putString(KEY_GROUP_ORDER, array.toString()).apply()
+    }
+
+    fun saveFavoriteItemOrders(orders: Map<String, List<String>>) {
+        val root = JSONObject()
+        orders.entries.take(28).forEach { (groupId, keys) ->
+            val array = JSONArray()
+            keys.distinct().filter { it.matches(FAVORITE_KEY_PATTERN) }.take(250).forEach { array.put(it) }
+            root.put(groupId, array)
+        }
+        preferences.edit().putString(KEY_ITEM_ORDERS, root.toString()).apply()
+    }
+
+    fun saveFavoriteGroupAppearances(appearances: Map<String, FavoriteGroupAppearance>) {
+        val root = JSONObject()
+        appearances.entries
+            .filter { (id, _) -> id in BUILT_IN_GROUP_IDS }
+            .forEach { (id, appearance) ->
+                root.put(
+                    id,
+                    JSONObject()
+                        .put("name", appearance.name.trim().take(36))
+                        .put("icon", appearance.icon)
+                        .put("color", appearance.color),
+                )
+            }
+        preferences.edit().putString(KEY_GROUP_APPEARANCES, root.toString()).apply()
+    }
+
+    fun saveHiddenFavoriteGroupIds(groupIds: Set<String>) {
+        val array = JSONArray()
+        groupIds.distinct().take(28).forEach { array.put(it) }
+        preferences.edit().putString(KEY_HIDDEN_GROUPS, array.toString()).apply()
     }
 
     fun saveRecent(items: List<CatalogItem>) {
@@ -116,6 +166,61 @@ class LocalStateStore(context: Context) {
                 )
             }
         }.distinctBy { it.id }
+    }
+
+    private fun parseStringArray(raw: String?): List<String> {
+        if (raw.isNullOrBlank()) return emptyList()
+        val array = JSONArray(raw)
+        return buildList {
+            for (index in 0 until array.length()) {
+                val value = array.optString(index).trim()
+                if (value.isNotBlank()) add(value)
+            }
+        }.distinct()
+    }
+
+    private fun parseOrderMap(raw: String?): Map<String, List<String>> {
+        if (raw.isNullOrBlank()) return emptyMap()
+        val root = JSONObject(raw)
+        return buildMap {
+            val groupIds = root.keys()
+            while (groupIds.hasNext()) {
+                val groupId = groupIds.next().trim()
+                if (groupId.isBlank()) continue
+                val array = root.optJSONArray(groupId) ?: continue
+                val keys = buildList {
+                    for (index in 0 until array.length()) {
+                        val key = array.optString(index)
+                        if (key.matches(FAVORITE_KEY_PATTERN)) add(key)
+                    }
+                }.distinct().take(250)
+                if (keys.isNotEmpty()) put(groupId, keys)
+            }
+        }
+    }
+
+    private fun parseAppearanceMap(raw: String?): Map<String, FavoriteGroupAppearance> {
+        if (raw.isNullOrBlank()) return emptyMap()
+        val root = JSONObject(raw)
+        return buildMap {
+            BUILT_IN_GROUP_IDS.forEach { id ->
+                val value = root.optJSONObject(id) ?: return@forEach
+                val fallback = defaultAppearance(id)
+                put(
+                    id,
+                    FavoriteGroupAppearance(
+                        name = value.optString("name", fallback.name).trim().take(36).ifBlank { fallback.name },
+                        icon = value.optString("icon", fallback.icon).takeIf { it in ALLOWED_ICONS } ?: fallback.icon,
+                        color = value.optString("color", fallback.color).takeIf { it in ALLOWED_COLORS } ?: fallback.color,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun normalizeOrder(saved: List<String>, valid: List<String>): List<String> {
+        val validSet = valid.toSet()
+        return (saved.filter { it in validSet } + valid.filterNot { it in saved }).distinct()
     }
 
     private fun parseProgress(raw: String?): Map<String, PlaybackProgress> {
@@ -220,12 +325,25 @@ class LocalStateStore(context: Context) {
         const val KEY_CACHE_SIZE = "settings.maxCachedCategories"
         const val KEY_FAVORITES = "favorites"
         const val KEY_GROUPS = "favoriteGroups"
+        const val KEY_GROUP_ORDER = "favoriteGroupOrder"
+        const val KEY_ITEM_ORDERS = "favoriteItemOrders"
+        const val KEY_GROUP_APPEARANCES = "favoriteGroupAppearances"
+        const val KEY_HIDDEN_GROUPS = "hiddenFavoriteGroupIds"
         const val KEY_RECENT = "recent"
         const val KEY_PROGRESS = "progress"
         const val DEFAULT_CACHE_SIZE = 3
         val FAVORITE_KEY_PATTERN = Regex("^(LIVE|MOVIE|SERIES|EPISODE):.+$")
         val ALLOWED_ICONS = setOf("heart", "tv", "popcorn", "play", "smile", "trophy", "folder", "star")
         val ALLOWED_COLORS = setOf("purple", "blue", "teal", "orange", "rose", "lime", "slate")
+        val DEFAULT_GROUP_ORDER = listOf("all", "live", "movie", "series")
+        val BUILT_IN_GROUP_IDS = DEFAULT_GROUP_ORDER.toSet()
+
+        fun defaultAppearance(id: String): FavoriteGroupAppearance = when (id) {
+            "live" -> FavoriteGroupAppearance("Live TV", "tv", "blue")
+            "movie" -> FavoriteGroupAppearance("Movies", "popcorn", "teal")
+            "series" -> FavoriteGroupAppearance("Series", "play", "orange")
+            else -> FavoriteGroupAppearance("All Favorites", "heart", "purple")
+        }
     }
 }
 
@@ -233,6 +351,10 @@ data class LocalAppState(
     val settings: AppSettings = AppSettings(),
     val favorites: List<CatalogItem> = emptyList(),
     val favoriteGroups: List<FavoriteGroup> = emptyList(),
+    val favoriteGroupOrder: List<String> = listOf("all", "live", "movie", "series"),
+    val favoriteItemOrders: Map<String, List<String>> = emptyMap(),
+    val favoriteGroupAppearances: Map<String, FavoriteGroupAppearance> = emptyMap(),
+    val hiddenFavoriteGroupIds: Set<String> = emptySet(),
     val recent: List<CatalogItem> = emptyList(),
     val progress: Map<String, PlaybackProgress> = emptyMap(),
 )

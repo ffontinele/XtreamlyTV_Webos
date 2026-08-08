@@ -11,6 +11,6 @@
     <item
         android:width="180dp"
         android:height="180dp"
-        android:drawable="@drawable/xtreamlytv_mark"
+        android:drawable="@drawable/xtreamlytv_mark_baseline"
         android:gravity="center" />
 </layer-list>

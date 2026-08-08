@@ -70,6 +70,12 @@ data class FavoriteGroup(
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
+data class FavoriteGroupAppearance(
+    val name: String,
+    val icon: String,
+    val color: String,
+)
+
 data class PlaybackProgress(
     val positionMs: Long,
     val durationMs: Long,

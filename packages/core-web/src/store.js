@@ -16,6 +16,8 @@
     },
     favorites: [],
     favoriteGroups: [],
+    favoriteGroupOrder: ['all', 'live', 'movie', 'series'],
+    favoriteItemOrders: {},
     recent: [],
     progress: {}
   };
@@ -70,16 +72,50 @@
     }).slice(0, 24);
   }
 
+  function normalizeGroupOrder(order, groups) {
+    var valid = ['all', 'live', 'movie', 'series'].concat((groups || []).map(function (group) { return group.id; }));
+    var validMap = {};
+    valid.forEach(function (id) { validMap[id] = true; });
+    var seen = {};
+    return (Array.isArray(order) ? order : []).map(String).filter(function (id) {
+      if (!validMap[id] || seen[id]) return false;
+      seen[id] = true;
+      return true;
+    }).concat(valid.filter(function (id) {
+      if (seen[id]) return false;
+      seen[id] = true;
+      return true;
+    }));
+  }
+
+  function normalizeFavoriteItemOrders(orders) {
+    var output = {};
+    if (!orders || typeof orders !== 'object' || Array.isArray(orders)) return output;
+    Object.keys(orders).slice(0, 28).forEach(function (groupId) {
+      var seen = {};
+      var keys = (Array.isArray(orders[groupId]) ? orders[groupId] : []).map(String).filter(function (key) {
+        if (!/^(live|movie|series):.+/.test(key) || seen[key]) return false;
+        seen[key] = true;
+        return true;
+      }).slice(0, 250);
+      if (keys.length) output[String(groupId)] = keys;
+    });
+    return output;
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
       if (!raw) return clone(defaults);
       var parsed = JSON.parse(raw);
+      var groups = migrateFavoriteGroups(parsed.favoriteGroups);
       return {
         credentials: parsed.credentials || null,
         settings: Object.assign({}, defaults.settings, parsed.settings || {}),
         favorites: migrateItems(parsed.favorites),
-        favoriteGroups: migrateFavoriteGroups(parsed.favoriteGroups),
+        favoriteGroups: groups,
+        favoriteGroupOrder: normalizeGroupOrder(parsed.favoriteGroupOrder, groups),
+        favoriteItemOrders: normalizeFavoriteItemOrders(parsed.favoriteItemOrders),
         recent: migrateItems(parsed.recent),
         progress: parsed.progress && typeof parsed.progress === 'object' ? parsed.progress : {}
       };
@@ -113,6 +149,9 @@
           group.itemKeys = group.itemKeys.filter(function (key) { return key !== removedKey; });
           group.updated_at = Date.now();
         });
+        Object.keys(state.favoriteItemOrders || {}).forEach(function (groupId) {
+          state.favoriteItemOrders[groupId] = state.favoriteItemOrders[groupId].filter(function (key) { return key !== removedKey; });
+        });
       } else state.favorites.unshift(normalizedItem(item, type));
       state.favorites = state.favorites.slice(0, 250);
       this.persist();
@@ -129,17 +168,44 @@
         state.favoriteGroups.splice(index, 1, value);
       } else {
         value.created_at = Date.now();
-        state.favoriteGroups.unshift(value);
+        state.favoriteGroups.push(value);
         state.favoriteGroups = state.favoriteGroups.slice(0, 24);
+        state.favoriteGroupOrder = normalizeGroupOrder((state.favoriteGroupOrder || []).concat(value.id), state.favoriteGroups);
       }
       this.persist();
       return clone(value);
     },
     deleteFavoriteGroup: function (id) {
+      id = String(id);
       var before = state.favoriteGroups.length;
-      state.favoriteGroups = state.favoriteGroups.filter(function (group) { return group.id !== String(id); });
+      state.favoriteGroups = state.favoriteGroups.filter(function (group) { return group.id !== id; });
+      state.favoriteGroupOrder = normalizeGroupOrder((state.favoriteGroupOrder || []).filter(function (groupId) { return groupId !== id; }), state.favoriteGroups);
+      if (state.favoriteItemOrders) delete state.favoriteItemOrders[id];
       if (state.favoriteGroups.length !== before) this.persist();
       return state.favoriteGroups.length !== before;
+    },
+    saveFavoriteGroupOrder: function (order) {
+      state.favoriteGroupOrder = normalizeGroupOrder(order, state.favoriteGroups);
+      this.persist();
+      return clone(state.favoriteGroupOrder);
+    },
+    saveFavoriteItemOrder: function (groupId, order) {
+      groupId = String(groupId || 'all');
+      var valid = {};
+      state.favorites.forEach(function (item) {
+        var type = Core.inferType(item);
+        valid[favoriteKey(type, Core.itemId(item, type))] = true;
+      });
+      var seen = {};
+      var normalized = (Array.isArray(order) ? order : []).map(String).filter(function (key) {
+        if (!valid[key] || seen[key]) return false;
+        seen[key] = true;
+        return true;
+      }).slice(0, 250);
+      state.favoriteItemOrders = state.favoriteItemOrders || {};
+      state.favoriteItemOrders[groupId] = normalized;
+      this.persist();
+      return clone(normalized);
     },
     addRecent: function (item, type) {
       type = type || Core.inferType(item);

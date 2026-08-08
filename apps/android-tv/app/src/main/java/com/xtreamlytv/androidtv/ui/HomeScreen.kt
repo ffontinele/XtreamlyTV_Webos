@@ -16,7 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -34,13 +36,14 @@ import com.xtreamlytv.androidtv.data.itemKey
 import com.xtreamlytv.androidtv.model.CatalogItem
 import com.xtreamlytv.androidtv.model.ContentType
 import com.xtreamlytv.androidtv.ui.theme.palette
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(state: AppUiState, viewModel: AppViewModel) {
     val recent = state.recent.distinctBy(::itemKey)
     val featured = recent.firstOrNull()
-    val livePreview = recent.filter { it.type == ContentType.LIVE }.take(7)
-    val moviePreview = recent.filter { it.type == ContentType.MOVIE }.take(7)
+    val livePreview = recent.filter { it.type == ContentType.LIVE }.take(8)
+    val moviePreview = recent.filter { it.type == ContentType.MOVIE }.take(8)
     val seriesPreview = recent
         .map { item ->
             if (
@@ -58,14 +61,41 @@ fun HomeScreen(state: AppUiState, viewModel: AppViewModel) {
         }
         .filter { it.type == ContentType.SERIES }
         .distinctBy(::itemKey)
-        .take(7)
+        .take(8)
+
+    val rails = remember(livePreview, moviePreview, seriesPreview) {
+        buildList {
+            if (livePreview.isNotEmpty()) add(HomeRailSpec(ContentType.LIVE, "Continue watching Live TV", livePreview))
+            if (moviePreview.isNotEmpty()) add(HomeRailSpec(ContentType.MOVIE, "Continue watching Movies", moviePreview))
+            if (seriesPreview.isNotEmpty()) add(HomeRailSpec(ContentType.SERIES, "Continue watching Series", seriesPreview))
+        }
+    }
+    val listState = rememberLazyListState()
+    val focusRequest = state.focusRequest?.takeIf { it.scope.startsWith("home:") }
+    val restoreFocusOnEntry = remember { focusRequest != null }
+    val heroPrimaryFocus = remember { FocusRequester() }
+    val firstShortcutFocus = remember { FocusRequester() }
+
+    LaunchedEffect(focusRequest, rails) {
+        val railIndex = rails.indexOfFirst { it.scope == focusRequest?.scope }
+        if (railIndex >= 0) listState.scrollToItem(railIndex + 2)
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 2.dp, end = 10.dp, top = 3.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        item { HomeHero(featured, viewModel) }
+        item {
+            HomeHero(
+                featured = featured,
+                viewModel = viewModel,
+                requestDefaultFocus = !restoreFocusOnEntry,
+                primaryFocus = heroPrimaryFocus,
+                downFocus = firstShortcutFocus,
+            )
+        }
         item {
             SectionHeader("Browse your provider")
             Spacer(Modifier.height(9.dp))
@@ -75,74 +105,56 @@ fun HomeScreen(state: AppUiState, viewModel: AppViewModel) {
                     count = state.categories[ContentType.LIVE].orEmpty().size,
                     catalogsLoading = state.catalogsLoading,
                     modifier = Modifier.weight(1f),
+                    focusRequester = firstShortcutFocus,
+                    upFocus = heroPrimaryFocus,
                 ) { viewModel.openCatalog(ContentType.LIVE) }
                 ProviderShortcut(
                     type = ContentType.MOVIE,
                     count = state.categories[ContentType.MOVIE].orEmpty().size,
                     catalogsLoading = state.catalogsLoading,
                     modifier = Modifier.weight(1f),
+                    upFocus = heroPrimaryFocus,
                 ) { viewModel.openCatalog(ContentType.MOVIE) }
                 ProviderShortcut(
                     type = ContentType.SERIES,
                     count = state.categories[ContentType.SERIES].orEmpty().size,
                     catalogsLoading = state.catalogsLoading,
                     modifier = Modifier.weight(1f),
+                    upFocus = heroPrimaryFocus,
                 ) { viewModel.openCatalog(ContentType.SERIES) }
             }
         }
-        if (recent.isNotEmpty()) {
-            item {
-                ContentRail(
-                    title = "Continue watching",
-                    items = recent.take(8),
-                    state = state,
-                    onClick = viewModel::activate,
-                )
-            }
-        }
-        if (livePreview.isNotEmpty()) {
-            item {
-                ContentRail(
-                    title = "Recently watched channels",
-                    items = livePreview,
-                    state = state,
-                    onClick = viewModel::activate,
-                    meta = "${livePreview.size} ${if (livePreview.size == 1) "channel" else "channels"}",
-                )
-            }
-        }
-        if (moviePreview.isNotEmpty()) {
-            item {
-                ContentRail(
-                    title = "Recently watched movies",
-                    items = moviePreview,
-                    state = state,
-                    onClick = viewModel::activate,
-                    meta = "${moviePreview.size} ${if (moviePreview.size == 1) "title" else "titles"}",
-                )
-            }
-        }
-        if (seriesPreview.isNotEmpty()) {
-            item {
-                ContentRail(
-                    title = "Recently watched series",
-                    items = seriesPreview,
-                    state = state,
-                    onClick = viewModel::activate,
-                    meta = "${seriesPreview.size} ${if (seriesPreview.size == 1) "title" else "titles"}",
-                )
-            }
+        itemsIndexed(rails, key = { _, rail -> rail.scope }) { _, rail ->
+            ContentRail(
+                spec = rail,
+                state = state,
+                focusRequest = focusRequest?.takeIf { it.scope == rail.scope },
+                viewModel = viewModel,
+            )
         }
     }
 }
 
-@Composable
-private fun HomeHero(featured: CatalogItem?, viewModel: AppViewModel) {
-    val colors = palette()
-    val primaryFocus = remember(featured?.id) { FocusRequester() }
+private data class HomeRailSpec(
+    val type: ContentType,
+    val title: String,
+    val items: List<CatalogItem>,
+) {
+    val scope: String = homeFocusScope(type)
+}
 
-    LaunchedEffect(featured?.id) {
-        primaryFocus.requestFocus()
+@Composable
+private fun HomeHero(
+    featured: CatalogItem?,
+    viewModel: AppViewModel,
+    requestDefaultFocus: Boolean,
+    primaryFocus: FocusRequester,
+    downFocus: FocusRequester,
+) {
+    val colors = palette()
+
+    LaunchedEffect(featured?.id, requestDefaultFocus) {
+        if (requestDefaultFocus) runCatching { primaryFocus.requestFocus() }
     }
 
     Box(
@@ -189,7 +201,9 @@ private fun HomeHero(featured: CatalogItem?, viewModel: AppViewModel) {
                         label = if (featured.type == ContentType.LIVE) "Watch now" else "Open details",
                         leading = "▶",
                         onClick = { viewModel.activate(featured) },
-                        modifier = Modifier.width(116.dp),
+                        modifier = Modifier
+                            .width(116.dp)
+                            .focusProperties { down = downFocus },
                         focusRequester = primaryFocus,
                     )
                 }
@@ -197,7 +211,9 @@ private fun HomeHero(featured: CatalogItem?, viewModel: AppViewModel) {
                     label = "Browse Live TV",
                     onClick = { viewModel.openCatalog(ContentType.LIVE) },
                     style = TvButtonStyle.Secondary,
-                    modifier = Modifier.width(122.dp),
+                    modifier = Modifier
+                        .width(122.dp)
+                        .focusProperties { down = downFocus },
                     focusRequester = if (featured == null) primaryFocus else null,
                 )
             }
@@ -211,10 +227,21 @@ private fun ProviderShortcut(
     count: Int,
     catalogsLoading: Boolean,
     modifier: Modifier,
+    focusRequester: FocusRequester? = null,
+    upFocus: FocusRequester? = null,
     onClick: () -> Unit,
 ) {
     val colors = palette()
-    TvSurface(modifier.height(62.dp), onClick = onClick) {
+    val routedModifier = if (upFocus != null) {
+        modifier.focusProperties { up = upFocus }
+    } else {
+        modifier
+    }
+    TvSurface(
+        modifier = routedModifier.height(62.dp),
+        onClick = onClick,
+        focusRequester = focusRequester,
+    ) {
         Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(32.dp).background(colors.accent.copy(alpha = 0.18f), RoundedCornerShape(9.dp)),
@@ -238,24 +265,65 @@ private fun ProviderShortcut(
 
 @Composable
 private fun ContentRail(
-    title: String,
-    items: List<CatalogItem>,
+    spec: HomeRailSpec,
     state: AppUiState,
-    onClick: (CatalogItem) -> Unit,
-    meta: String = "${items.size} ${if (items.size == 1) "item" else "items"}",
+    focusRequest: FocusRequest?,
+    viewModel: AppViewModel,
 ) {
-    SectionHeader(title, meta)
+    val rowState = rememberLazyListState()
+    val targetIndex = remember(spec.items, focusRequest) {
+        when {
+            focusRequest == null -> -1
+            focusRequest.firstItem -> 0
+            focusRequest.itemKey != null -> spec.items.indexOfFirst { itemKey(it) == focusRequest.itemKey }.coerceAtLeast(0)
+            else -> 0
+        }
+    }
+    val focusRequester = remember(spec.scope, focusRequest?.itemKey, focusRequest?.firstItem) { FocusRequester() }
+
+    LaunchedEffect(focusRequest, targetIndex) {
+        if (focusRequest != null && targetIndex in spec.items.indices) {
+            rowState.scrollToItem(targetIndex)
+            delay(48L)
+            runCatching { focusRequester.requestFocus() }
+            viewModel.consumeFocusRequest(spec.scope)
+        }
+    }
+
+    SectionHeader(
+        spec.title,
+        "${spec.items.size} ${if (spec.items.size == 1) "item" else "items"}",
+    )
     Spacer(Modifier.height(9.dp))
     LazyRow(
+        state = rowState,
         horizontalArrangement = Arrangement.spacedBy(9.dp),
         contentPadding = PaddingValues(start = 2.dp, end = 12.dp, bottom = 4.dp),
     ) {
-        items(items, key = { itemKey(it) }) { item ->
+        itemsIndexed(spec.items, key = { _, item -> itemKey(item) }) { index, item ->
             val favorite = state.favorites.any { it.type == item.type && it.id == item.id }
+            val requester = if (focusRequest != null && index == targetIndex) focusRequester else null
+            val onFocused = {
+                viewModel.rememberFocusedItem(AREA_HOME, spec.scope, itemKey(item))
+            }
             if (item.type == ContentType.LIVE) {
-                LiveItemCard(item, favorite, { onClick(item) }, Modifier.width(154.dp))
+                LiveItemCard(
+                    item,
+                    favorite,
+                    { viewModel.activate(item) },
+                    Modifier.width(154.dp),
+                    focusRequester = requester,
+                    onFocused = onFocused,
+                )
             } else {
-                PosterItemCard(item, favorite, { onClick(item) }, Modifier.width(104.dp))
+                PosterItemCard(
+                    item,
+                    favorite,
+                    { viewModel.activate(item) },
+                    Modifier.width(104.dp),
+                    focusRequester = requester,
+                    onFocused = onFocused,
+                )
             }
         }
     }
