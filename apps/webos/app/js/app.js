@@ -1103,8 +1103,9 @@
       var categories = this.categoriesFor(kind).filter(function (category) {
         return category && category.category_id !== undefined && category.category_id !== null && String(category.category_id) !== 'all';
       });
-      var activeExists = categories.some(function (category) { return String(category.category_id) === String(App.activeCategory[kind]); });
-      if (!activeExists) this.activeCategory[kind] = categories.length ? String(categories[0].category_id) : '';
+      var currentActive = String(this.activeCategory[kind] || '');
+      var activeExists = currentActive === 'all' || categories.some(function (category) { return String(category.category_id) === currentActive; });
+      if (!activeExists) this.activeCategory[kind] = categories.length ? String(categories[0].category_id) : 'all';
       var active = String(this.activeCategory[kind] || '');
       var view = document.getElementById('view');
       var emptySeries = kind === 'series' && this.seriesDiscovery === 'done' && !categories.length && !this.catalogCache.series.all;

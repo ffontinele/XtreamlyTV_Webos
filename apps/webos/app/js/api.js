@@ -82,7 +82,8 @@
   };
 
   XtreamApi.prototype.getLiveStreams = function (categoryId) {
-    return this.request('get_live_streams', { category_id: categoryId }, { timeout: 60000 }).then(function (data) {
+    var extras = categoryId && categoryId !== 'all' ? { category_id: categoryId } : {};
+    return this.request('get_live_streams', extras, { timeout: 60000 }).then(function (data) {
       return Core.normalizeCollection(data, ['live_streams']);
     });
   };
@@ -104,7 +105,8 @@
   };
 
   XtreamApi.prototype.getVodStreams = function (categoryId) {
-    return this.request('get_vod_streams', { category_id: categoryId }, { timeout: 60000 }).then(function (data) {
+    var extras = categoryId && categoryId !== 'all' ? { category_id: categoryId } : {};
+    return this.request('get_vod_streams', extras, { timeout: 60000 }).then(function (data) {
       return Core.normalizeCollection(data, ['vod_streams']);
     });
   };
