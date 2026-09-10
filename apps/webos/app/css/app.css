@@ -3077,3 +3077,7 @@ html, body { overflow:hidden; }
   padding: 8px 14px;
   font-size: 14px;
 }
+
+/* Login provider card: nome e servidor em linhas separadas */
+.provider-login-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.provider-login-copy strong, .provider-login-copy small { display: block; }
