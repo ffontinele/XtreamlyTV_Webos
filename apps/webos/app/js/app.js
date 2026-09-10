@@ -218,6 +218,46 @@
     pendingCatalogFirstFocus: { live:false, movies:false, series:false },
     pendingFavoriteFirstFocus: false,
 
+    showQrOverlay: function () {
+      var self = this;
+      var overlay = document.createElement('div');
+      overlay.className = 'qr-overlay';
+      overlay.innerHTML = '<div class="qr-content"><h2>Add Provider via QR Code</h2><p>Escaneie com o celular para enviar uma lista pra TV.</p><canvas id="qrCanvas" class="qr-canvas" width="300" height="300"></canvas><div class="qr-manual"><label>Ou digite este endereco no celular:</label><code id="qrUrl"></code></div><div class="qr-actions"><button id="qrClose" class="qr-close focusable" type="button">Fechar</button></div></div>';
+      document.body.appendChild(overlay);
+      var url = window.CloudSync.getQrUrl();
+      var qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      var canvas = document.getElementById('qrCanvas');
+      var ctx = canvas.getContext('2d');
+      var count = qr.getModuleCount();
+      var cell = Math.floor(300 / count);
+      var off = Math.floor((300 - cell * count) / 2);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 300, 300);
+      ctx.fillStyle = '#000';
+      for (var r2 = 0; r2 < count; r2++) { for (var c2 = 0; c2 < count; c2++) { if (qr.isDark(r2, c2)) ctx.fillRect(off + c2 * cell, off + r2 * cell, cell, cell); } }
+      document.getElementById('qrUrl').textContent = url;
+      overlay.addEventListener('keydown', function (e) {
+        if (e.keyCode === 27 || e.keyCode === 466) { e.preventDefault(); e.stopPropagation(); overlay.remove(); }
+      }, true);
+      document.getElementById('qrClose').addEventListener('click', function () { overlay.remove(); });
+      setTimeout(function () { var b = document.getElementById('qrClose'); if (b) b.focus(); }, 0);
+      window.CloudSync.init(function (playlist, markLoaded) { self.processPlaylist(playlist, markLoaded); });
+    },
+
+    processPlaylist: function (playlist, markLoaded) {
+      var cred = { id: 'xtv-' + Date.now(), name: playlist.playlist_name || 'Cloud Sync', server: playlist.playlist_url, username: playlist.xtream_username || '', password: playlist.xtream_password || '' };
+      XtreamlyTVStore.saveCredentials(cred);
+      this.state = XtreamlyTVStore.getState();
+      this.toast('Lista "' + cred.name + '" recebida!');
+      markLoaded();
+      var ov = document.querySelector('.qr-overlay');
+      if (ov) ov.remove();
+      if (this.currentView === 'settings') this.renderSettings();
+      else this.renderLogin();
+    },
+
     init: function () {
       this.applyTheme(this.state.settings.theme || 'teal');
       this.navigationStates = this.loadNavigationStates();

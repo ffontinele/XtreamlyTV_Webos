@@ -2,7 +2,7 @@
   'use strict';
 
   var SUPABASE_URL = 'https://fyqpqqrtmgcsjnygxkqv.supabase.co';
-  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5cXBxcXJ0bWdjc2pueWd4a3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMzE3NjEsImV4cCI6MjEwMzcwNzc2MX0.QInVAAU7i0GNSkWRzP6HedQkP5U6HJBDRhpQyey0eh8';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5cXBxcXJ0bWdjc2pueWd4a3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMzE3NjEsImV4cCI6MjEwMzcwNzc2MX0.QInVAAU7i0GNSkWRzP6HedqkP5U6HJBDRhpQyey0eh8';
   var POLL_INTERVAL = 5000;
   var DEVICE_PREFIX = 'XTV-';
 
@@ -48,7 +48,7 @@
     fetch(SUPABASE_URL + '/rest/v1/devices', {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ device_id: id, device_key: key, device_type: 'xtreamly' })
+      body: JSON.stringify({ device_id: id, device_key: key })
     }).then(function (r) {
       if (r.ok || r.status === 409) {
         callback && callback(null, { id: id, key: key });
