@@ -1092,6 +1092,7 @@
           self.renderCatalog(kind);
         }
       });
+      this.updateDebugHud(kind);
     },
 
     renderCatalog: function (kind) {
@@ -1169,6 +1170,23 @@
       return items.filter(function (item) { return (item._search || titleOf(item).toLowerCase()).indexOf(search) >= 0; });
     },
 
+    updateDebugHud: function (kind) {
+      var hud = document.getElementById('debugHud');
+      if (!hud) {
+        hud = document.createElement('div');
+        hud.id = 'debugHud';
+        hud.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:9999;background:rgba(0,0,0,.8);color:#7CFC00;font:13px monospace;padding:8px 12px;border-radius:10px;white-space:pre;';
+        document.body.appendChild(hud);
+      }
+      var rail = this.categoryRail;
+      var gridEl = document.getElementById('catalogGrid');
+      var lines = [];
+      lines.push('view=' + this.currentView + ' active=' + String(this.activeCategory[kind] || ''));
+      lines.push('cats=' + this.categoriesFor(kind).length + ' railItems=' + (rail ? rail.items.length : -1) + ' domButtons=' + (rail && rail.container ? rail.container.children.length : -1) + ' win=' + (rail ? rail.start : -1));
+      lines.push('gridItems=' + (this.currentFilteredItems[kind] || []).length + ' gridH=' + (gridEl ? gridEl.clientHeight : -1) + ' inner=' + (this.virtualGrid && this.virtualGrid.inner ? this.virtualGrid.inner.style.height : '-'));
+      hud.textContent = lines.join('\n');
+    },
+
     updateCatalogGrid: function (kind) {
       var config = this.catalogConfig(kind);
       var gridElement = document.getElementById('catalogGrid');
@@ -1213,6 +1231,13 @@
       } else {
         this.applyPendingNavigationRestore();
       }
+      if (this.categoryRail && this.categoryRail.container && this.categoryRail.items.length && !this.categoryRail.container.children.length) this.categoryRail.render(false);
+      if (gridElement.clientHeight === 0 && this.virtualGrid) {
+        var vg = this.virtualGrid;
+        requestAnimationFrame(function () { vg.measureRowHeight(); vg.updateHeight(); vg.render(true); });
+        setTimeout(function () { vg.measureRowHeight(); vg.updateHeight(); vg.render(true); }, 80);
+      }
+      this.updateDebugHud(kind);
     },
 
     destroyVirtualGrid: function () {
