@@ -3092,3 +3092,11 @@ html, body { overflow:hidden; }
 .password-row { display:flex; gap:8px; align-items:center; }
 .password-row input { flex:1 1 auto; min-width:0; }
 .password-eye { flex:0 0 auto; }
+
+/* === FLEX-SIZE FIX (webOS Chromium antigo: height:% contra pai flex vira auto) === */
+.view { display:flex; flex-direction:column; }
+.view > .scroll-view, .view > .library-layout, .view > .loading, .view > .screen { flex:1 1 auto; min-height:0; height:auto; }
+.library-layout { min-height:0; }
+.library-layout > .category-list { min-height:0; max-height:100%; }
+.library-browser { min-height:0; }
+.channel-grid, .poster-grid { min-height:0; }
