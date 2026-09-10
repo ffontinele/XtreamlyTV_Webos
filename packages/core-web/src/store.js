@@ -181,6 +181,18 @@
       return true;
     },
     clearCredentials: function () { state.credentials = null; this.persist(); },
+    clearHistoryForType: function (type) {
+      var types = type === 'series' ? ['series', 'episode'] : [type];
+      state.recent = (state.recent || []).filter(function (item) {
+        var t = item.content_type || Core.inferType(item);
+        return types.indexOf(t) < 0;
+      });
+      var progress = state.progress || {};
+      Object.keys(progress).forEach(function (key) {
+        if (types.indexOf(key.split(':')[0]) >= 0) delete progress[key];
+      });
+      this.persist();
+    },
     updateSettings: function (settings) { state.settings = Object.assign({}, state.settings, settings); this.persist(); },
     isFavorite: function (type, id) {
       if (arguments.length === 1) { id = type; type = 'live'; }

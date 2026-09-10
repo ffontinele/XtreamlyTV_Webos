@@ -922,9 +922,9 @@
         '</p><div class="hero-actions">' + (featured ? '<button class="primary-button focusable" id="heroPlay">▶ ' + (featuredType === 'live' ? 'Watch now' : 'Open details') + '</button>' : '') +
         '<button class="secondary-button focusable" id="browseAll">Browse Live TV</button></div></div></div>' +
         this.libraryShortcutsHtml() +
-        (livePreview.length ? this.channelSection('Continue watching Live TV', livePreview) : '') +
-        (moviePreview.length ? this.posterSection('Continue watching Movies', moviePreview, 'movie') : '') +
-        (seriesPreview.length ? this.posterSection('Continue watching Series', seriesPreview, 'series') : '') +
+        (livePreview.length ? this.channelSection('Continue watching Live TV', livePreview, true) : '') +
+        (moviePreview.length ? this.posterSection('Continue watching Movies', moviePreview, 'movie', true) : '') +
+        (seriesPreview.length ? this.posterSection('Continue watching Series', seriesPreview, 'series', true) : '') +
         '</div>';
       if (featured && document.getElementById('heroPlay')) {
         document.getElementById('heroPlay').addEventListener('click', function () { self.openContent(featured, featuredType); });
@@ -933,6 +933,17 @@
       this.bindShortcutCards();
       this.bindContentCards();
       this.annotateHomeNavigation();
+      var homeSelf = this;
+      ['live', 'movie', 'series'].forEach(function (type) {
+        var clearBtn = document.getElementById('clearRecentHome-' + type);
+        if (!clearBtn) return;
+        clearBtn.addEventListener('click', function () {
+          XtreamlyTVStore.clearHistoryForType(type);
+          homeSelf.state = XtreamlyTVStore.getState();
+          homeSelf.toast((type === 'live' ? 'Live TV' : type === 'movie' ? 'Movies' : 'Series') + ' history cleared');
+          homeSelf.renderHome();
+        });
+      });
       XtreamlyTVNavigation.focusFirst('.hero .focusable');
     },
 
@@ -986,12 +997,12 @@
         }).join('') + '</div></section>';
     },
 
-    channelSection: function (heading, channels) {
-      return '<section class="section"><div class="section-head"><h2>' + escapeHtml(heading) + '</h2><span class="section-meta">' + channels.length + ' channels</span></div><div class="channel-row">' + channels.map(this.channelCardHtml.bind(this)).join('') + '</div></section>';
+    channelSection: function (heading, channels, showClear) {
+      return '<section class="section"><div class="section-head"><h2>' + escapeHtml(heading) + '</h2><span class="section-meta">' + channels.length + ' channels</span>' + (showClear ? '<button id="clearRecentHome-live" class="secondary-button small-button focusable" type="button">Clear all</button>' : '') + '</div><div class="channel-row">' + channels.map(this.channelCardHtml.bind(this)).join('') + '</div></section>';
     },
 
-    posterSection: function (heading, items, type) {
-      return '<section class="section"><div class="section-head"><h2>' + escapeHtml(heading) + '</h2><span class="section-meta">' + items.length + ' titles</span></div><div class="poster-row">' + items.map(function (item) { return App.posterCardHtml(item, type); }).join('') + '</div></section>';
+    posterSection: function (heading, items, type, showClear) {
+      return '<section class="section"><div class="section-head"><h2>' + escapeHtml(heading) + '</h2><span class="section-meta">' + items.length + ' titles</span>' + (showClear ? '<button id="clearRecentHome-' + type + '" class="secondary-button small-button focusable" type="button">Clear all</button>' : '') + '</div><div class="poster-row">' + items.map(function (item) { return App.posterCardHtml(item, type); }).join('') + '</div></section>';
     },
 
     channelCardHtml: function (channel) {
@@ -1050,7 +1061,7 @@
     },
 
     categoryRailItems: function (kind, categories) {
-      var items = [];
+      var items = [{ id: 'all', label: 'ALL', secondary: 'Search all' }];
       (categories || []).forEach(function (category) {
         if (category.category_id === undefined || category.category_id === null || String(category.category_id) === 'all') return;
         items.push({
@@ -1338,10 +1349,18 @@
       document.getElementById('favoriteSeries').addEventListener('click', function () { XtreamlyTVStore.toggleFavorite(self.detail.item, 'series'); self.state = XtreamlyTVStore.getState(); self.renderSeriesDetail(); self.toast(favorite ? 'Removed from favorites' : 'Added to favorites'); });
       document.getElementById('closeSeries').addEventListener('click', function () { self.closeDetail(); });
       Array.prototype.forEach.call(document.querySelectorAll('[data-season]'), function (button) {
-        button.addEventListener('click', function () { self.detail.season = button.dataset.season; self.renderSeriesDetail(); });
+        button.addEventListener('click', function () { self.__preSeasonScroll = (document.querySelector('.detail-scroll') || { scrollTop: 0 }).scrollTop || 0; self.__pendingSeasonFocus = true; self.detail.season = button.dataset.season; self.renderSeriesDetail(); });
       });
       this.bindEpisodeCards();
-      XtreamlyTVNavigation.focusFirst('.season-button.active, .episode-card');
+      if (this.__pendingSeasonFocus) {
+        this.__pendingSeasonFocus = false;
+        var seasonScroll = document.querySelector('.detail-scroll');
+        var seasonScrollPos = this.__preSeasonScroll || 0;
+        if (seasonScroll) setTimeout(function () { seasonScroll.scrollTop = seasonScrollPos; }, 30);
+        XtreamlyTVNavigation.focusFirst('.season-button.active');
+      } else {
+        XtreamlyTVNavigation.focusFirst('.season-button.active, .episode-card');
+      }
     },
 
     episodeCardHtml: function (episode) {
@@ -2099,12 +2118,20 @@
       if (previous) previous.remove();
       var editor = document.createElement('div');
       editor.className = 'provider-editor';
-      editor.innerHTML = '<div class="provider-settings-grid"><label class="field"><span>Provider name</span><input id="settingsProviderName" class="focusable" value="' + escapeHtml(provider.name || '') + '"></label><label class="field provider-server"><span>Server URL</span><input id="settingsProviderServer" class="focusable" type="url" value="' + escapeHtml(provider.server || '') + '"></label><label class="field"><span>Username</span><input id="settingsProviderUsername" class="focusable" value="' + escapeHtml(provider.username || '') + '"></label><label class="field"><span>Password</span><input id="settingsProviderPassword" class="focusable" type="password" value="' + escapeHtml(provider.password || '') + '"></label></div><div class="settings-actions"><button id="saveSettingsProvider" class="primary-button focusable">Save and reconnect</button><button id="cancelSettingsProvider" class="secondary-button focusable">Cancel</button></div>';
+      editor.innerHTML = '<div class="provider-settings-grid"><label class="field"><span>Provider name</span><input id="settingsProviderName" class="focusable" value="' + escapeHtml(provider.name || '') + '"></label><label class="field provider-server"><span>Server URL</span><input id="settingsProviderServer" class="focusable" type="url" value="' + escapeHtml(provider.server || '') + '"></label><label class="field"><span>Username</span><input id="settingsProviderUsername" class="focusable" value="' + escapeHtml(provider.username || '') + '"></label><label class="field"><span>Password</span><div class="password-row"><input id="settingsProviderPassword" class="focusable" type="password" value="' + escapeHtml(provider.password || '') + '"><button type="button" id="toggleSettingsPassword" class="secondary-button small-button focusable password-eye">Show</button></div></label></div><div class="settings-actions"><button id="saveSettingsProvider" class="primary-button focusable">Save and reconnect</button><button id="cancelSettingsProvider" class="secondary-button focusable">Cancel</button></div>';
       host.appendChild(editor);
       document.getElementById('cancelSettingsProvider').addEventListener('click', function () {
         editor.remove();
         XtreamlyTVNavigation.invalidate();
         self.renderProviderManager();
+      });
+      var eyeBtn = document.getElementById('toggleSettingsPassword');
+      var passInput = document.getElementById('settingsProviderPassword');
+      if (eyeBtn && passInput) eyeBtn.addEventListener('click', function () {
+        var show = passInput.type === 'password';
+        passInput.type = show ? 'text' : 'password';
+        eyeBtn.textContent = show ? 'Hide' : 'Show';
+        XtreamlyTVNavigation.invalidate();
       });
       document.getElementById('saveSettingsProvider').addEventListener('click', function () {
         var credentials = {
