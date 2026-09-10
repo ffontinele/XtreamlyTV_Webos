@@ -1050,7 +1050,7 @@
     },
 
     categoryRailItems: function (kind, categories) {
-      var items = [];
+      var items = [{ id: 'all', label: 'ALL', secondary: 'Search all' }];
       (categories || []).forEach(function (category) {
         if (category.category_id === undefined || category.category_id === null || String(category.category_id) === 'all') return;
         items.push({
