@@ -8,6 +8,8 @@
   var KEY = 'xtreamlytv.state.v1';
   var defaults = {
     credentials: null,
+    providers: [],
+    activeProviderId: null,
     settings: {
       apiProxy: '',
       streamFormat: 'auto',
@@ -24,6 +26,10 @@
   };
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
+
+  function providerId() {
+    return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
 
   function normalizedItem(item, type) {
     var output = Object.assign({}, item || {});
@@ -112,6 +118,8 @@
       var groups = migrateFavoriteGroups(parsed.favoriteGroups);
       return {
         credentials: parsed.credentials || null,
+        providers: Array.isArray(parsed.providers) ? parsed.providers : [],
+        activeProviderId: parsed.activeProviderId ? String(parsed.activeProviderId) : null,
         settings: Object.assign({}, defaults.settings, parsed.settings || {}),
         favorites: migrateItems(parsed.favorites),
         favoriteGroups: groups,
@@ -128,7 +136,51 @@
 
   window.XtreamlyTVStore = window.TVeeStore = {
     getState: function () { return clone(state); },
-    saveCredentials: function (credentials) { state.credentials = credentials; this.persist(); },
+    getProviders: function () { return clone(state.providers || []); },
+    saveCredentials: function (credentials) {
+      var cred = Object.assign({}, credentials || {});
+      var providers = state.providers || (state.providers = []);
+      var id = cred.id ? String(cred.id) : '';
+      var existing = null;
+      if (id) {
+        existing = providers.find(function (p) { return String(p.id) === id; }) || null;
+      } else {
+        existing = providers.find(function (p) { return String(p.server || '') === String(cred.server || '') && String(p.username || '') === String(cred.username || ''); }) || null;
+      }
+      if (existing) {
+        Object.assign(existing, cred, { id: String(existing.id) });
+      } else {
+        cred.id = id || providerId();
+        providers.push(cred);
+        existing = cred;
+      }
+      state.activeProviderId = String(existing.id);
+      state.credentials = clone(existing);
+      this.persist();
+      return clone(existing);
+    },
+    selectProvider: function (id) {
+      var providers = state.providers || [];
+      var found = providers.find(function (p) { return String(p.id) === String(id); });
+      if (!found) return null;
+      state.activeProviderId = String(found.id);
+      state.credentials = clone(found);
+      this.persist();
+      return clone(found);
+    },
+    deleteProvider: function (id) {
+      var providers = state.providers || [];
+      var index = providers.findIndex(function (p) { return String(p.id) === String(id); });
+      if (index < 0) return false;
+      providers.splice(index, 1);
+      if (String(state.activeProviderId || '') === String(id)) {
+        var next = providers[0] || null;
+        state.activeProviderId = next ? String(next.id) : null;
+        state.credentials = next ? clone(next) : null;
+      }
+      this.persist();
+      return true;
+    },
     clearCredentials: function () { state.credentials = null; this.persist(); },
     updateSettings: function (settings) { state.settings = Object.assign({}, state.settings, settings); this.persist(); },
     isFavorite: function (type, id) {

@@ -2716,3 +2716,364 @@ body.video-mode #app,
   object-fit:contain;
   background:rgba(var(--panel-rgb),.45);
 }
+
+/* =========================================================
+   MULTI PROVIDER UI
+   XtreamlyTV - webOS / LG Remote
+   ========================================================= */
+
+/* ---------- Login: provider selection ---------- */
+
+.provider-login-container {
+  max-height: 900px;
+  overflow-y: auto;
+}
+
+.provider-login-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 24px 0;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.provider-login-card {
+  width: 100%;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  box-sizing: border-box;
+
+  background: rgba(var(--panel-rgb), .72);
+  border: 2px solid rgba(255,255,255,.07);
+  border-radius: 18px;
+
+  color: var(--text);
+  text-align: left;
+
+  cursor: pointer;
+  transition:
+    transform .15s ease,
+    border-color .15s ease,
+    background .15s ease,
+    box-shadow .15s ease;
+}
+
+.provider-login-card:hover,
+.provider-login-card:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(var(--panel-rgb), .96);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(0,0,0,.28);
+}
+
+.provider-login-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.12),
+    0 12px 35px rgba(0,0,0,.32);
+}
+
+.provider-login-card-icon {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+
+  background: rgba(255,255,255,.08);
+  color: var(--accent);
+
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+
+.provider-login-card-info {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.provider-login-card-info strong {
+  font-size: 21px;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.provider-login-card-info span {
+  color: var(--muted);
+  font-size: 15px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-login-card-info small {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.provider-login-card-arrow {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--muted);
+  padding-left: 10px;
+}
+
+.provider-login-card:focus .provider-login-card-arrow,
+.provider-login-card:hover .provider-login-card-arrow {
+  color: var(--accent);
+}
+
+.provider-login-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.provider-login-actions button {
+  flex: 1;
+}
+
+.provider-add-form {
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.provider-add-form h3 {
+  margin: 0 0 20px;
+  font-size: 25px;
+}
+
+.provider-empty {
+  min-height: 120px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 25px;
+
+  border: 1px dashed rgba(255,255,255,.13);
+  border-radius: 18px;
+
+  color: var(--muted);
+  text-align: center;
+}
+
+.provider-empty strong {
+  color: var(--text);
+  font-size: 20px;
+}
+
+.provider-empty span {
+  font-size: 15px;
+}
+
+
+/* ---------- Settings: provider manager ---------- */
+
+.provider-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 18px;
+}
+
+.provider-manager-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  padding: 18px 20px;
+
+  background: rgba(255,255,255,.025);
+  border: 2px solid rgba(255,255,255,.065);
+  border-radius: 17px;
+
+  transition:
+    border-color .15s ease,
+    background .15s ease;
+}
+
+.provider-manager-item.active {
+  border-color: var(--accent);
+  background: rgba(255,255,255,.045);
+}
+
+.provider-manager-info {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.provider-manager-info strong {
+  color: var(--text);
+  font-size: 19px;
+}
+
+.provider-manager-info span {
+  color: var(--muted);
+  font-size: 15px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-manager-info small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.provider-manager-actions {
+  display: flex;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+.provider-manager-actions button {
+  min-width: 82px;
+}
+
+.provider-manager-actions .danger-button {
+  min-width: 90px;
+}
+
+
+/* ---------- Provider editor ---------- */
+
+.provider-editor {
+  margin-top: 16px;
+  padding: 22px;
+
+  background: rgba(0,0,0,.12);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+}
+
+.provider-editor[hidden] {
+  display: none !important;
+}
+
+.provider-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.provider-settings-grid .provider-server {
+  grid-column: 1 / -1;
+}
+
+.provider-editor .settings-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+
+/* ---------- Better remote focus ---------- */
+
+.provider-manager .focusable:focus,
+.provider-editor .focusable:focus,
+.provider-login-container .focusable:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.10),
+    0 8px 28px rgba(0,0,0,.25);
+}
+
+
+/* ---------- LG webOS smaller resolutions ---------- */
+
+@media (max-width: 1400px) {
+
+  .provider-login-card {
+    min-height: 82px;
+    padding: 15px 18px;
+  }
+
+  .provider-login-card-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+  }
+
+  .provider-manager-item {
+    padding: 15px;
+    gap: 14px;
+  }
+
+  .provider-manager-actions {
+    flex-wrap: wrap;
+  }
+
+}
+
+
+/* ---------- Prevent giant provider lists from breaking settings ---------- */
+
+.provider-manager {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+
+/* v0.6.0 Scroll Fix: keep vertical pages scrollable while preserving horizontal rails. */
+html, body { overflow:hidden; }
+#app, .screen, .shell, .main, .view { min-width:0; min-height:0; }
+.main { display:flex; flex-direction:column; }
+.view { flex:1 1 auto; min-height:0; }
+.scroll-view,
+.detail-scroll {
+  min-height:0;
+  max-height:100%;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+
+/* Series details: the episode list is part of the same vertical scroll surface. */
+.series-hero { flex:0 0 auto; }
+.episode-section { min-height:0; }
+.episode-grid { min-height:0; }
+
+/* v0.6.0 recent-history clear action */
+.section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.section-head-actions .section-meta { white-space: nowrap; }
+.small-button {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
