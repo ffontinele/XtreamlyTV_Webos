@@ -2099,12 +2099,20 @@
       if (previous) previous.remove();
       var editor = document.createElement('div');
       editor.className = 'provider-editor';
-      editor.innerHTML = '<div class="provider-settings-grid"><label class="field"><span>Provider name</span><input id="settingsProviderName" class="focusable" value="' + escapeHtml(provider.name || '') + '"></label><label class="field provider-server"><span>Server URL</span><input id="settingsProviderServer" class="focusable" type="url" value="' + escapeHtml(provider.server || '') + '"></label><label class="field"><span>Username</span><input id="settingsProviderUsername" class="focusable" value="' + escapeHtml(provider.username || '') + '"></label><label class="field"><span>Password</span><input id="settingsProviderPassword" class="focusable" type="password" value="' + escapeHtml(provider.password || '') + '"></label></div><div class="settings-actions"><button id="saveSettingsProvider" class="primary-button focusable">Save and reconnect</button><button id="cancelSettingsProvider" class="secondary-button focusable">Cancel</button></div>';
+      editor.innerHTML = '<div class="provider-settings-grid"><label class="field"><span>Provider name</span><input id="settingsProviderName" class="focusable" value="' + escapeHtml(provider.name || '') + '"></label><label class="field provider-server"><span>Server URL</span><input id="settingsProviderServer" class="focusable" type="url" value="' + escapeHtml(provider.server || '') + '"></label><label class="field"><span>Username</span><input id="settingsProviderUsername" class="focusable" value="' + escapeHtml(provider.username || '') + '"></label><label class="field"><span>Password</span><div class="password-row"><input id="settingsProviderPassword" class="focusable" type="password" value="' + escapeHtml(provider.password || '') + '"><button type="button" id="toggleSettingsPassword" class="secondary-button small-button focusable password-eye">Show</button></div></label></div><div class="settings-actions"><button id="saveSettingsProvider" class="primary-button focusable">Save and reconnect</button><button id="cancelSettingsProvider" class="secondary-button focusable">Cancel</button></div>';
       host.appendChild(editor);
       document.getElementById('cancelSettingsProvider').addEventListener('click', function () {
         editor.remove();
         XtreamlyTVNavigation.invalidate();
         self.renderProviderManager();
+      });
+      var eyeBtn = document.getElementById('toggleSettingsPassword');
+      var passInput = document.getElementById('settingsProviderPassword');
+      if (eyeBtn && passInput) eyeBtn.addEventListener('click', function () {
+        var show = passInput.type === 'password';
+        passInput.type = show ? 'text' : 'password';
+        eyeBtn.textContent = show ? 'Hide' : 'Show';
+        XtreamlyTVNavigation.invalidate();
       });
       document.getElementById('saveSettingsProvider').addEventListener('click', function () {
         var credentials = {

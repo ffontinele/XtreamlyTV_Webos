@@ -156,6 +156,12 @@ button { color:inherit; }
 .scroll-view { flex:1 1 auto; min-height:0; }
 .library-browser { flex:1 1 auto; min-height:0; }
 .channel-grid, .poster-grid { flex:1 1 auto; min-height:0; }
+/* Scroll chain reforco final - WebOS Chromium Fix */
+.main { display:flex; flex-direction:column; }
+.view { flex:1 1 auto; min-height:0; }
+.scroll-view { flex:1 1 auto; min-height:0; }
+.library-browser { flex:1 1 auto; min-height:0; }
+.channel-grid, .poster-grid { flex:1 1 auto; min-height:0; }
 .scroll-view::-webkit-scrollbar,.category-list::-webkit-scrollbar,.channel-grid::-webkit-scrollbar,.poster-grid::-webkit-scrollbar { display:none; }
 
 /* Home */
@@ -3087,3 +3093,8 @@ html, body { overflow:hidden; }
 /* Login provider card: nome e servidor em linhas separadas */
 .provider-login-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .provider-login-copy strong, .provider-login-copy small { display: block; }
+
+/* Password visibility toggle */
+.password-row { display:flex; gap:8px; align-items:center; }
+.password-row input { flex:1 1 auto; min-width:0; }
+.password-eye { flex:0 0 auto; }
