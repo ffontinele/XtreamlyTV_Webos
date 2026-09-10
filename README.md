@@ -1,145 +1,34 @@
-# XtreamlyTV
+# XtreamlyTV for LG webOS — Edição Customizada
 
-XtreamlyTV is an open-source, remote-first IPTV client for living-room televisions. It connects to user-supplied Xtream-compatible providers and presents Live TV, Movies, and Series in a fast, category-scoped interface built for very large catalogs.
+Player Xtream Codes (Live TV / Filmes / Séries) para TVs LG webOS, baseado no upstream open source 0.6.0, com uma camada de melhorias validadas em hardware real (LG webOS / Chromium antigo).
 
-> XtreamlyTV does not provide channels, subscriptions, playlists, or copyrighted media. Use it only with services and content you are authorized to access.
+## Funcionalidades desta edição (v0.7.0)
 
-## Platform status
+- **Multi-provedores**: salve vários provedores Xtream; troque com Use / Edit / Delete sem redigitar credenciais (Settings > Providers)
+- **Olho na senha**: botão Show/Hide no editor de provedor
+- **ALL (busca global)**: categoria ALL no trilho de Live TV, Movies e Series carrega a biblioteca inteira do provedor
+- **Clear all por seção**: botões independentes para limpar histórico de Live TV, Movies e Series na Home
+- **Foco de temporada**: ao trocar de temporada numa série, o foco permanece no botão da temporada
+- **Grid padronizado**: tamanho de linha fixo (sem cards/letras gigantes em categorias grandes) — correção de loop de realimentação do VirtualGrid
+- **Scroll funcional**: containers com altura real de tela; rolagem nos catálogos e configurações
+- Compatível com controle remoto (navegação por foco) e roda 100% offline após conectar ao provedor
 
-| Platform | Status | Package | Playback |
-|---|---|---|---|
-| LG webOS TV | Beta; daily-driver testing | `.ipk` | Native webOS HTML media surface |
-| Android TV / Google TV | 0.6 synchronized Favorites candidate; device validation required | `.apk` | AndroidX Media3 ExoPlayer |
-| Local browser demo | Development only | Static files | Browser media support |
+## Build e instalação
 
-The Android TV target is a native Kotlin/Compose implementation of the same XtreamlyTV product experience established on webOS. Version 0.6 establishes one shared TV experience across both platforms, including explicit Favorites managers, group visibility and appearance controls, exact return-focus restoration, type-specific watch-history rails, and immediate branded startup while retaining platform-native playback and UI.
+    npm install
+    npm run build:webos        # gera dist/webos/com.github.xtreamlytv.webos_0.6.0_all.ipk
+    ares-install dist/webos/*.ipk   # TV em modo desenvolvedor, mesma rede
+    ares-launch com.github.xtreamlytv.webos
 
-## Features
+## Histórico de versões (tags)
 
-- Xtream provider authentication
-- Category-scoped Live TV, VOD, and Series browsing
-- Virtualized large-catalog navigation
-- Unified favorite groups, custom collections, long-press ordering, and recently watched favorites
-- Movie and episode resume positions on webOS and Android TV
-- Live HLS/MPEG-TS fallback on both TV platforms
-- Native Media3 playback on Android TV
-- Remote-first navigation and focus states
-- Matching Teal, Graphite, Purple, Pink, and Blue skins on both TV platforms
-- Editable provider settings, catalog cache controls, local history, and privacy controls
-- Optional LAN API bridge for providers that block browser CORS
-- No advertising, analytics, or tracking
+| Tag | Conteúdo |
+|---|---|
+| v0.6.0-original | Upstream do site, intocado |
+| v0.6.1-fase1-provedores | Multi-provedores (login + gerenciador) |
+| v0.6.3-estavel | Base intermediária validada |
+| v0.7.0-estavel | **LANÇAMENTO**: tudo acima + ALL global + clear all + grid padronizado + scroll |
 
-## Monorepo layout
+## Aviso
 
-```text
-apps/
-  webos/          LG webOS packaged app
-  android-tv/     Native Android TV / Google TV app
-  api-bridge/     Optional local metadata/CORS bridge
-packages/
-  core-web/       Shared browser/webOS Xtream and persistence primitives
-  contracts/      Platform-neutral JSON schemas and fixtures
-  design-tokens/  Shared brand, spacing, color, and motion tokens
-  brand/          Canonical project artwork
-scripts/          Build, install, synchronization, and release helpers
-docs/             Architecture, development, testing, and release guides
-.github/           CI, release workflows, templates, and dependency updates
-```
-
-The repository shares provider contracts, brand assets, design tokens, fixtures, and web-compatible domain primitives. Playback and UI shells remain platform-native so each television platform can use its best-supported media engine.
-
-## Quick start
-
-### Prerequisites
-
-- Git
-- Node.js 20 or newer
-- Python 3.11+ for browser smoke tests
-- LG webOS CLI for webOS builds
-- Android Studio or Android SDK/JDK 17 for Android TV builds
-
-Prepare generated platform files:
-
-```bash
-npm run prepare:apps
-npm run check:webos
-npm run test:core
-```
-
-### Build webOS
-
-```bash
-npm install -g @webos-tools/cli
-npm run build:webos
-```
-
-Output:
-
-```text
-dist/webos/com.github.xtreamlytv.webos_0.6.0_all.ipk
-```
-
-### Build Android TV
-
-```bash
-cd apps/android-tv
-./gradlew :app:assembleDebug
-```
-
-Windows:
-
-```powershell
-cd apps\android-tv
-.\gradlew.bat :app:assembleDebug
-```
-
-Output:
-
-```text
-apps/android-tv/app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Documentation
-
-- [Getting started](docs/getting-started.md)
-- [Architecture](docs/architecture.md)
-- [Build and test on LG webOS](docs/development/webos.md)
-- [Build and test on Android TV / Google TV](docs/development/android-tv.md)
-- [Debugging and diagnostics](docs/development/debugging.md)
-- [Release process](docs/releasing.md)
-- [Roadmap](docs/roadmap.md)
-- [Brand assets](docs/brand.md)
-- [0.6.0 release notes](docs/release-notes/0.6.0.md)
-- [0.5.1 release notes](docs/release-notes/0.5.1.md)
-- [0.5.0 release notes](docs/release-notes/0.5.0.md)
-- [0.4.1 release notes](docs/release-notes/0.4.1.md)
-- [0.4.0 release notes](docs/release-notes/0.4.0.md)
-- [Publish the initial GitHub repository](docs/github-publishing.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Privacy](PRIVACY.md)
-
-## Screenshots
-
-![XtreamlyTV home screen](docs/screenshots/xtreamlytv-home.png)
-
-![Virtualized Live TV browser](docs/screenshots/xtreamlytv-live-virtualized.png)
-
-![Movies library](docs/screenshots/xtreamlytv-movies.png)
-
-![Favorites groups landing page](docs/screenshots/xtreamlytv-favorites.png)
-
-![Favorites group browser](docs/screenshots/xtreamlytv-favorite-group.png)
-
-## Development principles
-
-1. Never fetch a provider's entire catalog unless the API offers no category-scoped alternative.
-2. Keep remote navigation deterministic and visibly focused.
-3. Use platform-native playback where practical.
-4. Never ship provider credentials, playlists, or copyrighted content.
-5. Treat provider responses as untrusted and inconsistent.
-6. Keep logs free of passwords and authenticated stream URLs.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Projeto pessoal. Não inclui canais, filmes ou subscrições — o conteúdo vem do provedor Xtream do usuário.
