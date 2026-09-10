@@ -81,12 +81,9 @@
   };
 
   VirtualGrid.prototype.measureRowHeight = function () {
-    if (!this.visibleRows) { this.rowHeight = this.baseRowHeight; return; }
-    var style = window.getComputedStyle ? window.getComputedStyle(this.container) : null;
-    var verticalPadding = style ? (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0) : 0;
-    var available = (this.container.clientHeight || 0) - verticalPadding - this.gap * Math.max(0, this.visibleRows - 1) - 2;
-    if (available > this.visibleRows * 60) this.rowHeight = Math.max(60, Math.floor(available / this.visibleRows));
-    else this.rowHeight = this.baseRowHeight;
+    /* FIX webOS: tamanho de linha SEMPRE padrao (esticar pelo container causava
+       loop de realimentacao: categoria grande -> container gigante -> linhas gigantes) */
+    this.rowHeight = this.baseRowHeight;
   };
 
   VirtualGrid.prototype.updateHeight = function () {

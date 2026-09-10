@@ -1183,7 +1183,7 @@
       var lines = [];
       lines.push('view=' + this.currentView + ' active=' + String(this.activeCategory[kind] || ''));
       lines.push('cats=' + this.categoriesFor(kind).length + ' railItems=' + (rail ? rail.items.length : -1) + ' domButtons=' + (rail && rail.container ? rail.container.children.length : -1) + ' win=' + (rail ? rail.start : -1));
-      lines.push('gridItems=' + (this.currentFilteredItems[kind] || []).length + ' gridH=' + (gridEl ? gridEl.clientHeight : -1) + ' inner=' + (this.virtualGrid && this.virtualGrid.inner ? this.virtualGrid.inner.style.height : '-'));
+      lines.push('gridItems=' + (this.currentFilteredItems[kind] || []).length + ' gridH=' + (gridEl ? gridEl.clientHeight : -1) + ' rowH=' + (this.virtualGrid ? this.virtualGrid.rowHeight : -1) + ' inner=' + (this.virtualGrid && this.virtualGrid.inner ? this.virtualGrid.inner.style.height : '-'));
       hud.textContent = lines.join('\n');
     },
 
@@ -1224,6 +1224,14 @@
         }
       });
       this.virtualGrid.setItems(items);
+      var vpH = window.innerHeight || 720;
+      var gRect = gridElement.getBoundingClientRect();
+      gridElement.style.maxHeight = Math.max(240, vpH - gRect.top - 40) + 'px';
+      var railEl = document.getElementById('categoryList');
+      if (railEl) {
+        var rRect = railEl.getBoundingClientRect();
+        railEl.style.maxHeight = Math.max(240, vpH - rRect.top - 40) + 'px';
+      }
       if (this.pendingCatalogFirstFocus[kind]) {
         this.pendingCatalogFirstFocus[kind] = false;
         this.pendingNavigationRestore = null;
