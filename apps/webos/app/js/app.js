@@ -426,34 +426,66 @@
 
     renderLogin: function (error) {
       this.destroyVirtualGrid();
-      var credentials = this.state.credentials || {};
+      var self = this;
+      var providers = XtreamlyTVStore.getProviders();
       var settings = this.state.settings || {};
       this.root.innerHTML = '<section class="screen login-screen">' +
         '<div class="login-brand"><div class="brand-lockup"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"><span>Live · Movies · Series</span></div>' +
         '<p>A fast, remote-first Xtream player designed for large provider libraries and LG webOS televisions.</p>' +
         '<div class="feature-pills"><span class="feature-pill">Virtualized catalogs</span><span class="feature-pill">Lazy loading</span><span class="feature-pill">Stream fallback</span><span class="feature-pill">Resume playback</span><span class="feature-pill">No tracking</span></div></div>' +
-        '<form id="loginForm" class="login-card">' +
+        '<div class="provider-login-container">' +
+        (providers.length ? '<div class="provider-login-list">' + providers.map(function (provider) {
+          return '<button class="provider-login-card focusable" data-provider-id="' + escapeHtml(provider.id) + '"><span class="provider-login-copy"><strong>' + escapeHtml(provider.name || provider.username || 'Provider') + '</strong><small>' + escapeHtml(provider.server || '') + ' · ' + escapeHtml(provider.username || '') + '</small></span></button>';
+        }).join('') + '</div>' : '<div class="provider-empty"><strong>No providers saved</strong><span>Add your first Xtream provider to get started.</span></div>') +
+        '<div class="provider-login-actions"><button id="addProviderButton" class="primary-button focusable" type="button">+ Add provider</button><button id="demoButton" class="secondary-button focusable" type="button">Explore demo</button></div>' +
+        '<form id="loginForm" class="login-card" hidden>' +
         '<h2>Connect your provider</h2><div class="sub">Enter the Xtream credentials supplied by your IPTV service.</div>' +
         (error ? '<div class="form-error">' + escapeHtml(error) + '</div>' : '') +
-        '<label class="field"><span>Server URL</span><input id="loginServer" class="focusable" name="server" type="url" enterkeyhint="next" value="' + escapeHtml(credentials.server || '') + '" placeholder="https://provider.example:443" autocomplete="off"></label>' +
-        '<label class="field"><span>Username</span><input id="loginUsername" class="focusable" name="username" enterkeyhint="next" value="' + escapeHtml(credentials.username || '') + '" autocomplete="off"></label>' +
-        '<label class="field"><span>Password</span><input id="loginPassword" class="focusable" name="password" type="password" enterkeyhint="done" value="' + escapeHtml(credentials.password || '') + '" autocomplete="off"></label>' +
+        '<label class="field"><span>Provider name</span><input id="loginProviderName" class="focusable" name="name" autocomplete="off" placeholder="My provider"></label>' +
+        '<label class="field"><span>Server URL</span><input id="loginServer" class="focusable" name="server" type="url" enterkeyhint="next" placeholder="https://provider.example:443" autocomplete="off"></label>' +
+        '<label class="field"><span>Username</span><input id="loginUsername" class="focusable" name="username" enterkeyhint="next" autocomplete="off"></label>' +
+        '<label class="field"><span>Password</span><input id="loginPassword" class="focusable" name="password" type="password" enterkeyhint="done" autocomplete="off"></label>' +
         '<div class="field-row"><label class="field"><span>Live stream format</span><select class="focusable" name="streamFormat"><option value="auto"' + (settings.streamFormat === 'auto' || !settings.streamFormat ? ' selected' : '') + '>Automatic fallback</option><option value="m3u8"' + (settings.streamFormat === 'm3u8' ? ' selected' : '') + '>HLS (.m3u8)</option><option value="ts"' + (settings.streamFormat === 'ts' ? ' selected' : '') + '>MPEG-TS (.ts)</option></select></label>' +
         '<label class="field"><span>API bridge (optional)</span><input class="focusable" name="apiProxy" value="' + escapeHtml(settings.apiProxy || '') + '" placeholder="http://unraid.local:8787"></label></div>' +
-        '<div class="button-row"><button id="loginConnect" class="primary-button focusable" type="submit">Connect</button><button class="secondary-button focusable" type="button" id="demoButton">Explore demo</button></div>' +
+        '<div class="button-row"><button id="loginConnect" class="primary-button focusable" type="submit">Connect</button><button class="secondary-button focusable" type="button" id="cancelAddProvider">Cancel</button></div>' +
         '<div class="login-note">XtreamlyTV provides no channels or subscriptions. Use only services and content you are authorized to access. Credentials are stored locally on this TV.</div>' +
-        '</form></section>';
+        '</form></div></section>';
 
-      var self = this;
-      document.getElementById('loginForm').addEventListener('submit', function (event) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-provider-id]'), function (card) {
+        card.addEventListener('click', function () {
+          var provider = XtreamlyTVStore.selectProvider(card.getAttribute('data-provider-id'));
+          if (provider) {
+            self.state = XtreamlyTVStore.getState();
+            self.connect(provider, self.state.settings || {}, false);
+          } else {
+            self.renderLogin('Unable to select the saved provider.');
+          }
+        });
+      });
+      var addBtn = document.getElementById('addProviderButton');
+      var form = document.getElementById('loginForm');
+      addBtn.addEventListener('click', function () {
+        form.hidden = false;
+        addBtn.hidden = true;
+        XtreamlyTVNavigation.invalidate();
+        setTimeout(function () { XtreamlyTVNavigation.focusFirst('#loginProviderName'); }, 0);
+      });
+      document.getElementById('cancelAddProvider').addEventListener('click', function () {
+        form.reset();
+        form.hidden = true;
+        addBtn.hidden = false;
+        XtreamlyTVNavigation.invalidate();
+        setTimeout(function () { XtreamlyTVNavigation.focusFirst('#addProviderButton'); }, 0);
+      });
+      form.addEventListener('submit', function (event) {
         event.preventDefault();
-        var form = new FormData(event.currentTarget);
+        var data = new FormData(event.currentTarget);
         self.connect({
-          server: form.get('server'), username: form.get('username'), password: form.get('password')
-        }, { apiProxy: form.get('apiProxy'), streamFormat: form.get('streamFormat'), theme: settings.theme || 'teal' });
+          id: '', name: data.get('name'), server: data.get('server'), username: data.get('username'), password: data.get('password')
+        }, { apiProxy: data.get('apiProxy'), streamFormat: data.get('streamFormat'), theme: settings.theme || 'teal' });
       });
       document.getElementById('demoButton').addEventListener('click', function () { self.startDemo(); });
-      [['loginServer', 'loginUsername'], ['loginUsername', 'loginPassword']].forEach(function (pair) {
+      [['loginProviderName', 'loginServer'], ['loginServer', 'loginUsername'], ['loginUsername', 'loginPassword']].forEach(function (pair) {
         var input = document.getElementById(pair[0]);
         if (!input) return;
         input.addEventListener('keydown', function (event) {
@@ -464,7 +496,7 @@
           if (next) { next.focus(); if (next.select) next.select(); }
         });
       });
-      XtreamlyTVNavigation.focusFirst('#loginConnect');
+      XtreamlyTVNavigation.focusFirst(providers.length ? '[data-provider-id]' : '#addProviderButton');
     },
 
     renderLoading: function (message) {
@@ -2007,7 +2039,86 @@
       document.getElementById('saveProxy').addEventListener('click', function () { XtreamlyTVStore.updateSettings({ apiProxy: document.getElementById('proxySetting').value.trim().replace(/\/+$/, '') }); self.refreshStateAndApi(); self.toast('API bridge saved'); });
       document.getElementById('signOut').addEventListener('click', function () { self.demo = false; self.detail = null; XtreamlyTVStore.clearCredentials(); self.state = XtreamlyTVStore.getState(); self.renderLogin(); });
       document.getElementById('clearHistory').addEventListener('click', function () { XtreamlyTVStore.clearHistory(); self.state = XtreamlyTVStore.getState(); self.toast('Watch history and resume positions cleared'); });
-      XtreamlyTVNavigation.focusFirst('#editProvider');
+      document.getElementById('addProviderSettings').addEventListener('click', function () {
+        self.openProviderEditor({ id: '', name: '', server: '', username: '', password: '' });
+      });
+      this.renderProviderManager();
+      XtreamlyTVNavigation.focusFirst('#addProviderSettings');
+    },
+
+    renderProviderManager: function () {
+      var self = this;
+      var host = document.getElementById('providerManager');
+      if (!host) return;
+      var providers = XtreamlyTVStore.getProviders();
+      var activeId = String(XtreamlyTVStore.getState().activeProviderId || '');
+      if (!providers.length) {
+        host.innerHTML = '<div class="provider-empty"><strong>No providers saved</strong><span>Add an Xtream provider to get started.</span></div>';
+        return;
+      }
+      host.innerHTML = providers.map(function (provider) {
+        var id = String(provider.id || '');
+        var active = id === activeId;
+        return '<div class="provider-manager-item' + (active ? ' active' : '') + '"><div class="provider-manager-info"><strong>' + escapeHtml(provider.name || provider.username || 'Provider') + '</strong><span>' + escapeHtml(provider.server || '') + '</span><small>' + escapeHtml(provider.username || '') + '</small></div><div class="provider-manager-actions"><button class="secondary-button focusable provider-select-button" data-provider-select="' + escapeHtml(id) + '">' + (active ? 'Active' : 'Use') + '</button><button class="secondary-button focusable provider-edit-button" data-provider-edit="' + escapeHtml(id) + '">Edit</button><button class="danger-button focusable provider-delete-button" data-provider-delete="' + escapeHtml(id) + '">Delete</button></div></div>';
+      }).join('');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-provider-select]'), function (button) {
+        button.addEventListener('click', function () {
+          var provider = XtreamlyTVStore.selectProvider(button.getAttribute('data-provider-select'));
+          if (provider) {
+            self.state = XtreamlyTVStore.getState();
+            self.connect(provider, self.state.settings || {}, false);
+          } else {
+            self.toast('Provider not found');
+          }
+        });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-provider-edit]'), function (button) {
+        button.addEventListener('click', function () {
+          var id = button.getAttribute('data-provider-edit');
+          var provider = XtreamlyTVStore.getProviders().find(function (item) { return String(item.id) === String(id); });
+          if (provider) self.openProviderEditor(provider);
+        });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-provider-delete]'), function (button) {
+        button.addEventListener('click', function () {
+          var removed = XtreamlyTVStore.deleteProvider(button.getAttribute('data-provider-delete'));
+          self.state = XtreamlyTVStore.getState();
+          self.renderProviderManager();
+          XtreamlyTVNavigation.invalidate();
+          self.toast(removed ? 'Provider deleted' : 'Provider not found');
+        });
+      });
+    },
+
+    openProviderEditor: function (provider) {
+      var self = this;
+      var host = document.getElementById('providerManager');
+      if (!host) return;
+      var previous = host.querySelector('.provider-editor');
+      if (previous) previous.remove();
+      var editor = document.createElement('div');
+      editor.className = 'provider-editor';
+      editor.innerHTML = '<div class="provider-settings-grid"><label class="field"><span>Provider name</span><input id="settingsProviderName" class="focusable" value="' + escapeHtml(provider.name || '') + '"></label><label class="field provider-server"><span>Server URL</span><input id="settingsProviderServer" class="focusable" type="url" value="' + escapeHtml(provider.server || '') + '"></label><label class="field"><span>Username</span><input id="settingsProviderUsername" class="focusable" value="' + escapeHtml(provider.username || '') + '"></label><label class="field"><span>Password</span><input id="settingsProviderPassword" class="focusable" type="password" value="' + escapeHtml(provider.password || '') + '"></label></div><div class="settings-actions"><button id="saveSettingsProvider" class="primary-button focusable">Save and reconnect</button><button id="cancelSettingsProvider" class="secondary-button focusable">Cancel</button></div>';
+      host.appendChild(editor);
+      document.getElementById('cancelSettingsProvider').addEventListener('click', function () {
+        editor.remove();
+        XtreamlyTVNavigation.invalidate();
+        self.renderProviderManager();
+      });
+      document.getElementById('saveSettingsProvider').addEventListener('click', function () {
+        var credentials = {
+          id: provider.id,
+          name: document.getElementById('settingsProviderName').value,
+          server: document.getElementById('settingsProviderServer').value,
+          username: document.getElementById('settingsProviderUsername').value,
+          password: document.getElementById('settingsProviderPassword').value
+        };
+        XtreamlyTVStore.saveCredentials(credentials);
+        self.state = XtreamlyTVStore.getState();
+        self.connect(credentials, self.state.settings || {}, false);
+      });
+      XtreamlyTVNavigation.invalidate();
+      setTimeout(function () { XtreamlyTVNavigation.focusFirst('#settingsProviderName'); }, 0);
     },
 
     refreshStateAndApi: function () {
