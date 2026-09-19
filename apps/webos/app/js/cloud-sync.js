@@ -119,7 +119,7 @@
   function getQrUrl() {
     var id = getDeviceId();
     var key = getDeviceKey();
-    return 'https://ffontinele.github.io/ZUI_IPTV_Player_portugues/painel_web/?id=' + encodeURIComponent(id) + '&key=' + encodeURIComponent(key);
+    return 'https://ffontinele.github.io/zui-sync/?id=' + encodeURIComponent(id) + '&key=' + encodeURIComponent(key);
   }
 
   window.CloudSync = {
