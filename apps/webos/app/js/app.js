@@ -640,7 +640,7 @@
       };
       this.activeCategory.live = this.firstCategoryId('live');
       this.activeCategory.movies = this.firstCategoryId('movies');
-      this.activeCategory.series = this.firstCategoryId('series');
+      if (!this.activeCategory.series) this.activeCategory.series = this.firstCategoryId('series');
       this.storeCache('live', 'all', this.normalizeCatalogItems('live', XtreamlyTVMock.liveStreams));
       this.storeCache('movies', 'all', this.normalizeCatalogItems('movies', XtreamlyTVMock.vodStreams));
       this.storeCache('series', 'all', this.normalizeCatalogItems('series', XtreamlyTVMock.series));
@@ -1078,7 +1078,19 @@
         button.addEventListener('click', function () {
           var type = button.dataset.contentType;
           var item = self.resolveItem(type, button.dataset.contentId);
-          if (item) self.openContent(item, type);
+          if (!item) {
+            var wanted = String(button.dataset.contentId);
+            var pools = (self.state.recent || []).concat(self.state.favorites || []);
+            for (var pi = 0; pi < pools.length; pi++) {
+              var cand = pools[pi];
+              var ct = typeOf(cand);
+              if (ct === type && String(idOf(cand, type)) === wanted) { item = cand; break; }
+              if (type === 'series' && ct === 'episode' && cand.parent_series && String(idOf(cand.parent_series, 'series')) === wanted) { item = cand.parent_series; break; }
+              if (type === 'series' && ct === 'episode' && cand.series_id !== undefined && String(cand.series_id) === wanted) { item = { series_id: cand.series_id, name: cand.series_name || 'Series', content_type: 'series' }; break; }
+            }
+          }
+          if (!item) return;
+          try { self.openContent(item, type); } catch (err) { /* ignora */ }
         });
       });
     },
@@ -1288,7 +1300,7 @@
 
     openMovieDetail: function (movie) {
       var self = this;
-      var returnView = this.currentView === 'favorites' ? 'favorites' : 'movies';
+      var returnView = (this.currentView === 'home' || this.currentView === 'favorites') ? this.currentView : 'movies';
       var returnState = this.captureNavigationState();
       this.rememberNavigationState(returnState);
       this.detail = { type: 'movie', item: movie, info: null, loading: true, error: '', returnView:returnView, returnState:returnState };
@@ -1333,7 +1345,7 @@
 
     openSeriesDetail: function (series) {
       var self = this;
-      var returnView = this.currentView === 'favorites' ? 'favorites' : 'series';
+      var returnView = (this.currentView === 'home' || this.currentView === 'favorites') ? this.currentView : 'series';
       var returnState = this.captureNavigationState();
       this.rememberNavigationState(returnState);
       this.detail = { type: 'series', item: series, info: null, loading: true, error: '', season: null, returnView:returnView, returnState:returnState };
@@ -1343,7 +1355,9 @@
         self.detail.info = response || {};
         self.detail.loading = false;
         var seasons = self.seriesSeasonKeys(response);
-        self.detail.season = seasons.length ? seasons[0] : null;
+        var seriesNorm0 = normalizeSeries(self.detail.item, response || {});
+        var resumeEp0 = self.findResumeEpisode(response || {}, seriesNorm0);
+        self.detail.season = resumeEp0 ? String(resumeEp0.season || (seasons.length ? seasons[0] : 1)) : (seasons.length ? seasons[0] : null);
         self.renderView();
       }).catch(function (error) {
         if (!self.detail) return;
@@ -1385,6 +1399,20 @@
       });
     },
 
+    findResumeEpisode: function (response, series) {
+      var self = this;
+      var seasons = this.seriesSeasonKeys(response);
+      var best = null, bestSec = 0;
+      for (var si = 0; si < seasons.length; si++) {
+        var eps = this.episodesForSeason(response, seasons[si]).map(function (ep) { return self.normalizeEpisode(ep, series, seasons[si]); });
+        for (var ei = 0; ei < eps.length; ei++) {
+          var pr = XtreamlyTVStore.getProgress('episode', idOf(eps[ei], 'episode'));
+          if (pr && pr.seconds > 30 && pr.seconds > bestSec) { bestSec = pr.seconds; best = eps[ei]; }
+        }
+      }
+      return best;
+    },
+
     renderSeriesDetail: function () {
       var self = this;
       var view = document.getElementById('view');
@@ -1397,6 +1425,7 @@
       var seasons = this.seriesSeasonKeys(response);
       var activeSeason = this.detail.season || (seasons.length ? seasons[0] : null);
       var episodes = this.episodesForSeason(response, activeSeason).map(function (episode) { return self.normalizeEpisode(episode, series, activeSeason); });
+    var resumeEp = this.findResumeEpisode(response, series);
       this.episodeLookup = {};
       episodes.forEach(function (episode) { self.episodeLookup[idOf(episode, 'episode')] = episode; });
       var favorite = XtreamlyTVStore.isFavorite('series', series.series_id);
@@ -1406,6 +1435,21 @@
         '<div class="episode-grid">' + (episodes.length ? episodes.map(this.episodeCardHtml.bind(this)).join('') : '<div class="empty-state grid-empty">No episodes were returned for this season.</div>') + '</div></section></div>';
       document.getElementById('favoriteSeries').addEventListener('click', function () { XtreamlyTVStore.toggleFavorite(self.detail.item, 'series'); self.state = XtreamlyTVStore.getState(); self.renderSeriesDetail(); self.toast(favorite ? 'Removed from favorites' : 'Added to favorites'); });
       document.getElementById('closeSeries').addEventListener('click', function () { self.closeDetail(); });
+      var favBtn0 = document.getElementById('favoriteSeries');
+      if (favBtn0 && resumeEp && !document.getElementById('resumeSeries')) {
+        var rb = document.createElement('button');
+        rb.type = 'button';
+        rb.className = 'primary-button focusable';
+        rb.id = 'resumeSeries';
+        rb.textContent = '\u25b6 Continue S' + ('0' + (resumeEp.season || 1)).slice(-2) + 'E' + ('0' + (resumeEp.episode_num || 1)).slice(-2);
+        favBtn0.parentNode.insertBefore(rb, favBtn0);
+      }
+      var resumeBtn = document.getElementById('resumeSeries');
+      if (resumeBtn) resumeBtn.addEventListener('click', function () {
+        if (!resumeEp) return;
+        var seasonEps = self.episodesForSeason(response, resumeEp.season).map(function (e) { return self.normalizeEpisode(e, series, resumeEp.season); });
+        self.playMedia(resumeEp, 'episode', seasonEps, series);
+      });
       Array.prototype.forEach.call(document.querySelectorAll('[data-season]'), function (button) {
         button.addEventListener('click', function () { self.__preSeasonScroll = (document.querySelector('.detail-scroll') || { scrollTop: 0 }).scrollTop || 0; self.__pendingSeasonFocus = true; self.detail.season = button.dataset.season; self.renderSeriesDetail(); });
       });
@@ -1425,15 +1469,29 @@
       var id = idOf(episode, 'episode');
       var progress = XtreamlyTVStore.getProgress('episode', id);
       var percent = progress && progress.duration ? Math.min(100, progress.seconds / progress.duration * 100) : 0;
-      return '<button class="episode-card focusable" data-episode-id="' + escapeHtml(id) + '"><span class="episode-number">' + escapeHtml(episode.episode_num || '•') + '</span><div><strong>' + escapeHtml(episodeTitle(episode)) + '</strong><p>' + escapeHtml(descriptionOf(episode) || 'Episode ' + (episode.episode_num || '')) + '</p></div><span class="episode-play">▶</span>' + (percent ? '<div class="episode-progress"><i style="width:' + percent + '%"></i></div>' : '') + '</button>';
+      var continueBadge = progress && progress.seconds > 30 ? '<div class="episode-continue-badge">▶ Continue from ' + formatSeconds(progress.seconds) + '</div>' : '';
+      return '<button class="episode-card focusable" data-episode-id="' + escapeHtml(id) + '"><span class="episode-number">' + escapeHtml(episode.episode_num || '•') + '</span><div><strong>' + escapeHtml(episodeTitle(episode)) + '</strong><p>' + escapeHtml(descriptionOf(episode) || 'Episode ' + (episode.episode_num || '')) + '</p>' + continueBadge + '</div><span class="episode-play">▶</span>' + (percent ? '<div class="episode-progress"><i style="width:' + percent + '%"></i></div>' : '') + '</button>';
     },
 
     bindEpisodeCards: function () {
       var self = this;
+      // Rebuild lookup on the fly (defensive against stale refs)
+      var freshLookup = {};
       Array.prototype.forEach.call(document.querySelectorAll('[data-episode-id]'), function (button) {
-        button.addEventListener('click', function () {
-          var episode = self.episodeLookup[button.dataset.episodeId];
-          if (episode) self.playMedia(episode, 'episode', [], episode.parent_series);
+        var eid = button.dataset.episodeId;
+        if (!eid) return;
+        // Remove old listeners by cloning (prevents double-fire)
+        var fresh = button.cloneNode(true);
+        button.parentNode.replaceChild(fresh, button);
+        fresh.addEventListener('click', function () {
+          // Resolve episode fresh from current detail state (not stale lookup)
+          var ep = (self.detail && self.detail.episodes && self.detail.episodes.find && self.detail.episodes.find(function (e) { return String(idOf(e, 'episode')) === String(eid); })) || self.episodeLookup[eid];
+          if (ep) {
+            self.playMedia(ep, 'episode', (self.detail && self.detail.info ? self.episodesForSeason(self.detail.info, self.detail.season).map(function (e) { return self.normalizeEpisode(e, self.detail.item, self.detail.season); }) : []), ep.parent_series || (self.detail && self.detail.item));
+          } else {
+            console.warn('[episode] click without match:', eid);
+            self.toast('Episode not found — reopen the series');
+          }
         });
       });
     },
@@ -2278,6 +2336,16 @@
       this.playbackCandidates = this.buildPlaybackCandidates(item, type);
       this.playbackCandidateIndex = 0;
       this.playbackProgressRestored = false;
+      // Episode navigation state (for next/prev episode buttons + D-pad)
+      if (type === 'episode' && list && list.length) {
+        var currentIdx = -1;
+        for (var i = 0; i < list.length; i++) { if (idOf(list[i], 'episode') === idOf(item, 'episode')) { currentIdx = i; break; } }
+        this.playerEpisodeList = list;
+        this.playerEpisodeIndex = currentIdx >= 0 ? currentIdx : 0;
+      } else {
+        this.playerEpisodeList = null;
+        this.playerEpisodeIndex = -1;
+      }
       this.playbackSwitching = false;
       this.playbackFailureLock = false;
       this.playerHasPlayed = false;
@@ -2290,7 +2358,7 @@
       XtreamlyTVStore.addRecent(item, type);
       this.state = XtreamlyTVStore.getState();
       var artwork = type === 'live' ? logo(item) : poster(item, type, 'player-poster');
-      var hints = type === 'live' ? '<span class="key">▲▼</span> Channel &nbsp; <span class="key">◀▶</span> Rewind / forward<br><span class="key">OK</span> Pause / play &nbsp; <span class="key green-key">GREEN</span> Go live &nbsp; <span class="key red-key">RED</span> Favorite' : '<span class="key">◀▶</span> Seek 30 seconds<br><span class="key">OK</span> Pause / play &nbsp; <span class="key red-key">RED</span> Favorite';
+      var hints = type === 'live' ? '<span class="key">▲▼</span> Channel &nbsp; <span class="key">◀▶</span> Rewind / forward<br><span class="key">OK</span> Pause / play &nbsp; <span class="key green-key">GREEN</span> Go live &nbsp; <span class="key red-key">RED</span> Favorite' : (type === 'episode' ? '<span class="key">▲▼</span> Episode prev / next &nbsp; ' : '') + '<span class="key">◀▶</span> Seek 30 seconds<br><span class="key">OK</span> Pause / play &nbsp; <span class="key red-key">RED</span> Favorite';
       var player = document.createElement('section');
       player.className = 'player overlay';
       player.id = 'player';
@@ -2501,17 +2569,57 @@
       this.showPlayerError('Unable to display this stream', reason + code + ' The channel may be offline or encoded with a video codec unsupported by this LG TV.');
     },
 
+    playNextEpisode: function () {
+      if (!this.playerEpisodeList || this.playerEpisodeIndex < 0) return false;
+      var next = this.playerEpisodeIndex + 1;
+      if (next >= this.playerEpisodeList.length) { this.toast('Last episode of the season'); return false; }
+      this.playerEpisodeIndex = next;
+      this.toast('Next: Episode ' + (this.playerEpisodeList[next].episode_num || (next + 1)));
+      this.playMedia(this.playerEpisodeList[next], 'episode', this.playerEpisodeList, this.playerParent);
+      return true;
+    },
+
+    playPrevEpisode: function () {
+      if (!this.playerEpisodeList || this.playerEpisodeIndex < 0) return false;
+      var prev = this.playerEpisodeIndex - 1;
+      if (prev < 0) { this.toast('First episode of the season'); return false; }
+      this.playerEpisodeIndex = prev;
+      this.toast('Previous: Episode ' + (this.playerEpisodeList[prev].episode_num || prev));
+      this.playMedia(this.playerEpisodeList[prev], 'episode', this.playerEpisodeList, this.playerParent);
+      return true;
+    },
+
     restoreProgress: function (video) {
       if (this.playerType === 'live' || this.playbackProgressRestored) return;
-      this.playbackProgressRestored = true;
+      var self = this;
       var progress = XtreamlyTVStore.getProgress(this.playerType, idOf(this.playerMedia, this.playerType));
-      if (progress && progress.seconds > 30 && (!video.duration || progress.seconds < video.duration - 30)) {
-        try { video.currentTime = progress.seconds; this.toast('Resumed from ' + formatSeconds(progress.seconds)); } catch (e) { /* ignore */ }
-      }
+      if (!progress || progress.seconds <= 30) return;
+      if (progress.duration && progress.seconds >= progress.duration - 30) { this.playbackProgressRestored = true; return; }
+      var target = progress.seconds;
+      var attempts = 0;
+      var interval = null;
+      var confirmed = false;
+      var trySeek = function () {
+        attempts++;
+        if (confirmed || !video || attempts > 15) { if (interval) { clearInterval(interval); interval = null; } return; }
+        if (isFinite(video.currentTime) && Math.abs(video.currentTime - target) < 2) {
+          confirmed = true; self.playbackProgressRestored = true;
+          if (interval) { clearInterval(interval); interval = null; }
+          self.toast('Resumed from ' + formatSeconds(target));
+          return;
+        }
+        var canSeek = video.readyState >= 2;
+        if (!canSeek && video.seekable && video.seekable.length > 0) canSeek = true;
+        if (canSeek) { try { video.currentTime = target; } catch (e) { /* ignora */ } }
+      };
+      trySeek();
+      interval = setInterval(trySeek, 800);
+      setTimeout(function () { if (interval) { clearInterval(interval); interval = null; } if (!confirmed) { self.playbackProgressRestored = true; } }, 12000);
     },
 
     maybeSaveProgress: function (video) {
       if (this.playerType === 'live' || !video || !isFinite(video.currentTime)) return;
+      if (video.currentTime < 30) return;
       if (Date.now() - this.lastProgressSave < 10000) return;
       this.lastProgressSave = Date.now();
       XtreamlyTVStore.saveProgress(this.playerType, idOf(this.playerMedia, this.playerType), video.currentTime, video.duration);
@@ -2631,8 +2739,13 @@
       if (old) old.remove();
       var error = document.createElement('div');
       error.className = 'player-error';
-      error.innerHTML = '<div><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(message) + '</p><p>Press BACK to return.</p></div>';
+      error.innerHTML = '<div><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(message) + '</p><p>Closes in 5s - use UP/DOWN to switch, BACK to exit.</p></div>';
       player.appendChild(error);
+      clearTimeout(this.playerErrorTimer);
+      var errEl = error;
+      this.playerErrorTimer = setTimeout(function () {
+        if (errEl && errEl.parentNode) errEl.parentNode.removeChild(errEl);
+      }, 5000);
     },
 
     showOverlay: function (keepOpen) {
@@ -2654,13 +2767,16 @@
     },
 
     closePlayer: function () {
+      // Defensive lock reset (prevents stuck state between sessions)
+      this.playbackFailureLock = false;
+      this.playbackSwitching = false;
+      this.playbackProgressRestored = false;
+      clearTimeout(this.playbackBufferTimer); this.playbackBufferTimer = null;
+      clearTimeout(this.playbackWatchdog); this.playbackWatchdog = null;
       clearTimeout(this.overlayTimer);
-      clearTimeout(this.playbackWatchdog);
-      clearTimeout(this.playbackBufferTimer);
-      this.playbackBufferTimer = null;
       var video = document.getElementById('video');
       if (video) {
-        if (this.playerType !== 'live' && isFinite(video.currentTime)) XtreamlyTVStore.saveProgress(this.playerType, idOf(this.playerMedia, this.playerType), video.currentTime, video.duration);
+        if (this.playerType !== 'live' && isFinite(video.currentTime) && video.currentTime > 30) XtreamlyTVStore.saveProgress(this.playerType, idOf(this.playerMedia, this.playerType), video.currentTime, video.duration);
         try { video.pause(); video.removeAttribute('src'); video.load(); } catch (error) { /* ignore */ }
       }
       var player = document.getElementById('player');
@@ -2772,7 +2888,9 @@
     onGlobalKey: function (event) {
       if (this.playerOpen) {
         if (event.keyCode === BACK || event.keyCode === STOP) { event.preventDefault(); this.closePlayer(); }
-        else if (event.keyCode === 38 && this.playerType === 'live') { event.preventDefault(); this.changeChannel(-1); }
+        else if (event.keyCode === 38 && this.playerType === 'episode') { event.preventDefault(); this.playPrevEpisode(); }
+      else if (event.keyCode === 40 && this.playerType === 'episode') { event.preventDefault(); this.playNextEpisode(); }
+      else if (event.keyCode === 38 && this.playerType === 'live') { event.preventDefault(); this.changeChannel(-1); }
         else if (event.keyCode === 40 && this.playerType === 'live') { event.preventDefault(); this.changeChannel(1); }
         else if (event.keyCode === 37) { event.preventDefault(); this.seek(-30); }
         else if (event.keyCode === 39) { event.preventDefault(); this.seek(30); }
