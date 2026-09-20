@@ -255,7 +255,7 @@
       var ov = document.querySelector('.qr-overlay');
       if (ov) ov.remove();
       if (this.currentView === 'settings') this.renderSettings();
-      else this.renderLogin();
+      else this.renderShell('home', null);
     },
 
     init: function () {
@@ -607,7 +607,7 @@
       }).catch(function (error) {
         if (!silent) XtreamlyTVStore.clearCredentials();
         self.state = XtreamlyTVStore.getState();
-        self.renderLogin(error.message || 'Unable to connect.');
+        self.toast(error.message || 'Conexao falhou'); self.renderShell('home', null);
       });
     },
 
@@ -950,6 +950,13 @@
     renderHome: function () {
       var self = this;
       var view = document.getElementById('view');
+      if (!this.state.credentials && !this.demo) {
+        view.innerHTML = '<div class="empty-state" style="padding:80px 40px; text-align:center;"><h2>Bem-vindo ao XtreamlyTV</h2><p style="opacity:.7; margin:18px 0 36px;">Para ver canais, filmes e series, adicione um provedor.</p><button class="primary-button focusable" id="guestToSettings" style="font-size:18px; padding:14px 32px;">Ir para Configuracoes</button></div>';
+        var btn = document.getElementById('guestToSettings');
+        if (btn) btn.addEventListener('click', function () { self.currentView = 'settings'; self.renderSettings(); });
+        if (window.XtreamlyTVNavigation && window.XtreamlyTVNavigation.focusFirst) setTimeout(function () { window.XtreamlyTVNavigation.focusFirst('#guestToSettings'); }, 50);
+        return;
+      }
       var recent = this.state.recent || [];
       var livePreview = recent.filter(function (item) { return typeOf(item) === 'live'; }).slice(0, 7);
       var moviePreview = recent.filter(function (item) { return typeOf(item) === 'movie'; }).slice(0, 7);
