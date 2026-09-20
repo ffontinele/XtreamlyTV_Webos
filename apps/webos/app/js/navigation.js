@@ -59,6 +59,25 @@
     }
   }
 
+  function scrollIntoViewRobust(candidate) {
+    if (!candidate || !candidate.getBoundingClientRect) return;
+    var node = candidate.parentElement;
+    while (node && node !== document.body) {
+      var style = window.getComputedStyle(node);
+      var canY = /(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1;
+      if (canY) {
+        var vr = node.getBoundingClientRect();
+        var ir = candidate.getBoundingClientRect();
+        if (ir.bottom > vr.bottom - 18) node.scrollTop += (ir.bottom - (vr.bottom - 18));
+        else if (ir.top < vr.top + 18) node.scrollTop -= (vr.top + 18 - ir.top);
+      }
+      node = node.parentElement;
+    }
+    var ir2 = candidate.getBoundingClientRect();
+    if (ir2.bottom > window.innerHeight - 18) window.scrollBy(0, ir2.bottom - window.innerHeight + 36);
+    else if (ir2.top < 18) window.scrollBy(0, ir2.top - 18);
+  }
+
   function ensureVisible(candidate) {
     if (!candidate || !candidate.closest) return;
     var horizontalViewport = candidate.closest('.favorite-groups-row,.channel-row,.poster-row,.mixed-row');
@@ -68,6 +87,7 @@
        scroll view. Keep both axes in sync instead of scrolling only the row. */
     if (horizontalViewport) ensureAxisVisible(horizontalViewport, candidate, true, horizontalViewport === verticalViewport);
     if (verticalViewport && verticalViewport !== horizontalViewport) ensureAxisVisible(verticalViewport, candidate, false, true);
+    scrollIntoViewRobust(candidate);
   }
 
   function moveSibling(active, selector, delta, trapAtEnd) {
@@ -173,7 +193,7 @@
       }
       targetRow += delta;
     }
-    return true;
+      return false;
   }
 
   function seriesDetailViewport(active) {

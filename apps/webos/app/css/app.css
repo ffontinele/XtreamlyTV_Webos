@@ -3125,3 +3125,10 @@ html, body { overflow:hidden; }
   gap: 3px;
 }
 .episode-continue-badge::before { content: '▶'; font-size: 9px; }
+
+/* v0.8.1 scroll fix: alturas definitivas em vh (Chromium antigo da LG falha com height:100%) */
+html, body, #app { height:100%; }
+.shell { height:100vh; }
+.main { height:100%; }
+.view { height:calc(100vh - 90px); }
+.view > .scroll-view { height:100%; max-height:100%; }
