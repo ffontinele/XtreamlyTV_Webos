@@ -2333,6 +2333,19 @@
     },
 
     playMedia: function (item, type, list, parent) {
+      // ═══ FLUSH: salva progresso do item anterior antes de sobrescrever ═══
+      var prevVideo = document.getElementById('video');
+      if (this.playerMedia && prevVideo && this.playerType !== 'live' &&
+          isFinite(prevVideo.currentTime) && prevVideo.currentTime > 30) {
+        var prevId = idOf(this.playerMedia, this.playerType);
+        if (prevId) {
+          XtreamlyTVStore.saveProgress(this.playerType, prevId, prevVideo.currentTime, prevVideo.duration);
+        }
+      }
+      // Suprime salvamentos durante a transição (liberado em 'playing')
+      this.progressSaveSuppressed = true;
+      // ═══════════════════════════════════════════════════════════════════════
+
       var self = this;
       this.playerReturnState = this.captureNavigationState();
       this.playerOpen = true;
@@ -2428,6 +2441,8 @@
       video.addEventListener('canplay', function () { self.onPlaybackReady(video); });
       video.addEventListener('playing', function () {
         self.playerHasPlayed = true;
+        self.progressSaveSuppressed = false; // Libera salvamento de progresso
+        self.lastProgressSave = Date.now();  // Reseta contador (evita save imediato)
         self.onPlaybackReady(video);
         self.startPlaybackWatchdog(video);
         self.updateTransportState(video);
@@ -2627,6 +2642,7 @@
     maybeSaveProgress: function (video) {
       if (this.playerType === 'live' || !video || !isFinite(video.currentTime)) return;
       if (video.currentTime < 30) return;
+      if (this.progressSaveSuppressed) return; // Suprimido durante troca de item
       if (Date.now() - this.lastProgressSave < 10000) return;
       this.lastProgressSave = Date.now();
       XtreamlyTVStore.saveProgress(this.playerType, idOf(this.playerMedia, this.playerType), video.currentTime, video.duration);
@@ -2783,7 +2799,7 @@
       clearTimeout(this.overlayTimer);
       var video = document.getElementById('video');
       if (video) {
-        if (this.playerType !== 'live' && isFinite(video.currentTime) && video.currentTime > 30) XtreamlyTVStore.saveProgress(this.playerType, idOf(this.playerMedia, this.playerType), video.currentTime, video.duration);
+        if (this.playerType !== 'live' && !this.progressSaveSuppressed && isFinite(video.currentTime) && video.currentTime > 30) XtreamlyTVStore.saveProgress(this.playerType, idOf(this.playerMedia, this.playerType), video.currentTime, video.duration);
         try { video.pause(); video.removeAttribute('src'); video.load(); } catch (error) { /* ignore */ }
       }
       var player = document.getElementById('player');
