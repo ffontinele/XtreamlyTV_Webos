@@ -1,6 +1,16 @@
 (function () {
   'use strict';
 
+  window.addEventListener('error', function (ev) {
+    try {
+      var b = document.getElementById('jsErrorBanner');
+      if (!b) { b = document.createElement('div'); b.id = 'jsErrorBanner'; b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#aa0000;color:#ffffff;font:14px monospace;padding:8px 12px;white-space:pre-wrap;display:none;'; document.body.appendChild(b); }
+      b.textContent = 'JS ERROR: ' + (ev.message || '?') + ' @ linha ' + (ev.lineno || '?') + ':' + (ev.colno || '?');
+      b.style.display = 'block';
+      setTimeout(function () { b.style.display = 'none'; }, 8000);
+    } catch (e) { /* ignore */ }
+  });
+
   var BACK = 461, PLAY = 415, PAUSE = 19, STOP = 413, RED = 403, GREEN = 404;
   var APP_NAME = 'XtreamlyTV';
   var APP_ID = 'com.github.xtreamlytv.webos';
@@ -1344,7 +1354,7 @@
         (this.detail.error ? '<p class="detail-warning">' + escapeHtml(this.detail.error) + '</p>' : '') +
         '<div class="detail-actions"><button class="primary-button focusable" id="playMovie">▶ ' + (progress && progress.seconds > 30 ? 'Resume from ' + formatSeconds(progress.seconds) : 'Play movie') + '</button><button class="secondary-button focusable" id="favoriteMovie">' + (favorite ? '♥ Remove favorite' : '♡ Add favorite') + '</button><button class="secondary-button focusable" id="closeDetail">Back</button></div>' +
         '<div class="detail-facts">' + (movie.cast ? '<div><span>Cast</span><strong>' + escapeHtml(movie.cast) + '</strong></div>' : '') + (movie.director ? '<div><span>Director</span><strong>' + escapeHtml(movie.director) + '</strong></div>' : '') + '</div></div></div></section></div>';
-      document.getElementById('playMovie').addEventListener('click', function () { self.playMedia(movie, 'movie'); });
+      document.getElementById('playMovie').addEventListener('click', function () { self.playWithResumeCheck(movie, 'movie'); });
       document.getElementById('favoriteMovie').addEventListener('click', function () { XtreamlyTVStore.toggleFavorite(self.detail.item, 'movie'); self.state = XtreamlyTVStore.getState(); self.renderMovieDetail(); self.toast(favorite ? 'Removed from favorites' : 'Added to favorites'); });
       document.getElementById('closeDetail').addEventListener('click', function () { self.closeDetail(); });
       XtreamlyTVNavigation.focusFirst('#playMovie');
@@ -1494,7 +1504,7 @@
           // Resolve episode fresh from current detail state (not stale lookup)
           var ep = (self.detail && self.detail.episodes && self.detail.episodes.find && self.detail.episodes.find(function (e) { return String(idOf(e, 'episode')) === String(eid); })) || self.episodeLookup[eid];
           if (ep) {
-            self.playMedia(ep, 'episode', (self.detail && self.detail.info ? self.episodesForSeason(self.detail.info, self.detail.season).map(function (e) { return self.normalizeEpisode(e, self.detail.item, self.detail.season); }) : []), ep.parent_series || (self.detail && self.detail.item));
+            self.playWithResumeCheck(ep, 'episode', (self.detail && self.detail.info ? self.episodesForSeason(self.detail.info, self.detail.season).map(function (e) { return self.normalizeEpisode(e, self.detail.item, self.detail.season); }) : []), ep.parent_series || (self.detail && self.detail.item));
           } else {
             console.warn('[episode] click without match:', eid);
             self.toast('Episode not found — reopen the series');
@@ -2330,6 +2340,76 @@
         .concat((this.state.favorites || []).filter(function (entry) { return typeOf(entry) === 'live'; }))
         .concat((this.state.recent || []).filter(function (entry) { return typeOf(entry) === 'live'; })));
       return fallback;
+    },
+
+    playWithResumeCheck: function (item, type, list, parent) {
+      if (type === 'live') { this.playMedia(item, type, list, parent); return; }
+      var progress = XtreamlyTVStore.getProgress(type, idOf(item, type));
+      var finished = progress && progress.duration && progress.seconds >= progress.duration - 30;
+      if (progress && progress.seconds > 30 && !finished) this.showResumeDialog(item, type, list, parent, progress);
+      else this.playMedia(item, type, list, parent);
+    },
+
+    showResumeDialog: function (item, type, list, parent, progress) {
+      var self = this;
+      this.closeResumeDialog();
+      this.resumeDialogOpen = true;
+      this.resumeDialogSelection = 0;
+      this.resumeDialogData = { item: item, type: type, list: list, parent: parent };
+      this.resumeDialogReturn = document.activeElement;
+      var overlay = document.createElement('div');
+      overlay.id = 'resumeDialog';
+      overlay.className = 'resume-dialog-overlay';
+      var label = type === 'episode' ? episodeTitle(item) : titleOf(item);
+      overlay.innerHTML = '<div class="resume-dialog">' +
+        '<h3>Continuar assistindo?</h3>' +
+        '<p class="resume-dialog-sub">' + escapeHtml(label) + ' &middot; parou em ' + formatSeconds(progress.seconds) + '</p>' +
+        '<div class="resume-dialog-actions">' +
+        '<div class="resume-option selected" id="resumeOpt0">&#9654; Continuar de ' + formatSeconds(progress.seconds) + '</div>' +
+        '<div class="resume-option" id="resumeOpt1">&#10227; Voltar ao início</div>' +
+        '</div>' +
+        '<p class="resume-dialog-hint">&#9650;&#9660; escolher &nbsp;&middot;&nbsp; OK confirmar &nbsp;&middot;&nbsp; BACK cancelar</p>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('#resumeOpt0').addEventListener('click', function () { self.resumeDialogSelection = 0; self.resumeDialogConfirm(); });
+      overlay.querySelector('#resumeOpt1').addEventListener('click', function () { self.resumeDialogSelection = 1; self.resumeDialogConfirm(); });
+      try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) { /* ignore */ }
+      this.resumeDialogKeyHandler = function (event) {
+        var k = event.keyCode || event.which;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (k === 38 || k === 40) { self.resumeDialogSelection = self.resumeDialogSelection === 0 ? 1 : 0; self.updateResumeDialogSelection(); return; }
+        if (k === 13 || k === 32) { self.resumeDialogConfirm(); return; }
+        if (k === 461 || k === 27 || k === 10009) { self.closeResumeDialog(); return; }
+      };
+      document.addEventListener('keydown', this.resumeDialogKeyHandler, true);
+    },
+
+    updateResumeDialogSelection: function () {
+      var o0 = document.getElementById('resumeOpt0');
+      var o1 = document.getElementById('resumeOpt1');
+      if (o0) o0.className = 'resume-option' + (this.resumeDialogSelection === 0 ? ' selected' : '');
+      if (o1) o1.className = 'resume-option' + (this.resumeDialogSelection === 1 ? ' selected' : '');
+    },
+
+    resumeDialogConfirm: function () {
+      var d = this.resumeDialogData;
+      var sel = this.resumeDialogSelection;
+      this.closeResumeDialog();
+      if (!d) return;
+      if (sel === 1) XtreamlyTVStore.clearProgress(d.type, idOf(d.item, d.type));
+      this.playMedia(d.item, d.type, d.list, d.parent);
+    },
+
+    closeResumeDialog: function () {
+      if (this.resumeDialogKeyHandler) { document.removeEventListener('keydown', this.resumeDialogKeyHandler, true); this.resumeDialogKeyHandler = null; }
+      this.resumeDialogOpen = false;
+      this.resumeDialogData = null;
+      var el = document.getElementById('resumeDialog');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      var ret = this.resumeDialogReturn;
+      this.resumeDialogReturn = null;
+      if (ret && document.body.contains(ret)) { try { ret.focus(); } catch (e) { /* ignore */ } }
     },
 
     playMedia: function (item, type, list, parent) {
