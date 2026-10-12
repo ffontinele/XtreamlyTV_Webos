@@ -2458,7 +2458,7 @@
       XtreamlyTVStore.addRecent(item, type);
       this.state = XtreamlyTVStore.getState();
       var artwork = type === 'live' ? logo(item) : poster(item, type, 'player-poster');
-      var hints = type === 'live' ? '<span class="key">▲▼</span> Channel &nbsp; <span class="key">◀▶</span> Rewind / forward<br><span class="key">OK</span> Pause / play &nbsp; <span class="key green-key">GREEN</span> Go live &nbsp; <span class="key red-key">RED</span> Favorite' : (type === 'episode' ? '<span class="key">▲▼</span> Episode prev / next &nbsp; ' : '') + '<span class="key">◀▶</span> Seek 30 seconds<br><span class="key">OK</span> Pause / play &nbsp; <span class="key red-key">RED</span> Favorite';
+      var hints = type === 'live' ? '<span class="key">▲▼</span> Channel &nbsp; <span class="key">◀▶</span> Rewind / forward<br><span class="key">OK</span> Pause / play &nbsp; <span class="key green-key">GREEN</span> Go live &nbsp; <span class="key red-key">RED</span> Favorite' : (type === 'episode' ? '<span class="key">▲▼</span> Episode prev / next &nbsp; ' : '') + '<span class="key">◀▶</span> Seek back 10 / forward 30<br><span class="key">OK</span> Pause / play &nbsp; <span class="key red-key">RED</span> Favorite';
       var player = document.createElement('section');
       player.className = 'player overlay';
       player.id = 'player';
@@ -2466,7 +2466,7 @@
         '<div id="playerLoading" class="player-loading"><div class="spinner"></div><strong id="playerLoadingText">Opening stream…</strong><span id="playerFormatLabel"></span></div>' +
         '<div class="player-top"><div class="player-brand"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"></div><div class="player-clock">' + formatTime(new Date()) + '</div></div>' +
         '<div class="player-bottom"><div id="playerTimeline" class="player-timeline"><span id="currentTime">0:00</span><div id="playerProgressTrack" class="player-progress"><i id="playerProgress"></i><b id="playerScrubber"></b></div><span id="durationTime">0:00</span><button id="goLiveButton" class="go-live-button" type="button">Go Live</button></div>' +
-        '<div class="player-transport"><button id="rewindButton" type="button">−30</button><button id="playPauseButton" class="play-pause-button" type="button">Pause</button><button id="forwardButton" type="button">+30</button></div>' +
+        '<div class="player-transport"><button id="rewindButton" type="button">−10</button><button id="playPauseButton" class="play-pause-button" type="button">Pause</button><button id="forwardButton" type="button">+30</button></div>' +
         '<div class="player-info"><div id="playerArtwork">' + artwork + '</div><div><div id="playerTitle" class="player-channel">' + escapeHtml(type === 'episode' ? episodeTitle(item) : titleOf(item)) + '</div><div id="playerProgram" class="player-program">' + escapeHtml(this.mediaSubtitle(item, type)) + '</div><div id="playerDescription" class="player-program-description">' + escapeHtml(type === 'live' ? '' : descriptionOf(item)) + '</div></div>' +
         '<div class="player-hints">' + hints + '<br><span class="key">BACK</span> Exit player</div></div></div>';
       if (!this.playerHost) {
@@ -2484,7 +2484,7 @@
       this.showOverlay(true);
       this.loadPlayerEpg(item);
 
-      document.getElementById('rewindButton').addEventListener('click', function () { self.seek(-30); });
+      document.getElementById('rewindButton').addEventListener('click', function () { self.seek(-10); });
       document.getElementById('forwardButton').addEventListener('click', function () { self.seek(30); });
       document.getElementById('playPauseButton').addEventListener('click', function () { self.togglePlayback(); });
       document.getElementById('goLiveButton').addEventListener('click', function () { self.goToLive(); });
@@ -2995,7 +2995,7 @@
       else if (event.keyCode === 40 && this.playerType === 'episode') { event.preventDefault(); this.playNextEpisode(); }
       else if (event.keyCode === 38 && this.playerType === 'live') { event.preventDefault(); this.changeChannel(-1); }
         else if (event.keyCode === 40 && this.playerType === 'live') { event.preventDefault(); this.changeChannel(1); }
-        else if (event.keyCode === 37) { event.preventDefault(); this.seek(-30); }
+        else if (event.keyCode === 37) { event.preventDefault(); this.seek(-10); }
         else if (event.keyCode === 39) { event.preventDefault(); this.seek(30); }
         else if (event.keyCode === 13) { event.preventDefault(); this.togglePlayback(); }
         else if (event.keyCode === PLAY) { event.preventDefault(); var playVideo = document.getElementById('video'); if (playVideo) { try { playVideo.play(); } catch (playError) { /* ignore */ } this.updateTransportState(playVideo); } this.showOverlay(); }
