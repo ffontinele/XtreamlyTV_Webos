@@ -841,8 +841,8 @@
         this.playerHost.innerHTML = '';
       }
       this.root.innerHTML = '<div class="shell screen">' + this.sidebarHtml() +
-        '<main class="main"><header class="topbar"><h1 id="viewTitle"></h1><div class="topbar-right"><span class="status-cluster"><span class="status-dot"></span><span class="status-text">' +
-        escapeHtml(this.demo ? 'Demo mode' : ((this.profile && this.profile.user_info && this.profile.user_info.status) || 'Connected')) +
+        '<main class="main"><header class="topbar"><h1 id="viewTitle"></h1><div class="topbar-right"><span class="status-cluster"><span class="status-dot"></span><span class="status-text" style="max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+        escapeHtml(this.demo ? 'Demo mode' : (((this.profile && this.profile.user_info && this.profile.user_info.status) || 'Connected') + ' · ' + this.activeProviderLabel())) +
         '</span></span><strong id="clock" class="topbar-clock"></strong></div></header><section id="view" class="view"></section></main></div>' +
         '<div id="menuHint" class="menu-hint" aria-hidden="true"><span class="menu-key menu-key-red">RED</span><span id="menuHintText">Add favorite</span></div>';
       this.bindShell();
@@ -963,6 +963,12 @@
       if (clock) clock.textContent = formatTime(new Date());
       var playerClock = document.querySelector('.player-clock');
       if (playerClock) playerClock.textContent = formatTime(new Date());
+    },
+
+    activeProviderLabel: function () {
+      var cred = this.state && this.state.credentials;
+      if (!cred) return 'Sem lista';
+      return String(cred.name || cred.username || cred.server || 'Lista');
     },
 
     viewTitle: function () {
