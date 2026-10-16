@@ -11,7 +11,7 @@
     } catch (e) { /* ignore */ }
   });
 
-  var BACK = 461, PLAY = 415, PAUSE = 19, STOP = 413, RED = 403, GREEN = 404;
+  var BACK = 461, PLAY = 415, PAUSE = 19, STOP = 413, RED = 403, GREEN = 404, BLUE = 406;
   var APP_NAME = 'XtreamlyTV';
   var APP_ID = 'com.github.xtreamlytv.webos';
   var APP_VERSION = '0.6.0';
@@ -232,26 +232,46 @@
       var self = this;
       var overlay = document.createElement('div');
       overlay.className = 'qr-overlay';
-      overlay.innerHTML = '<div class="qr-content"><h2>Add Provider via QR Code</h2><p>Escaneie com o celular para enviar uma lista pra TV.</p><canvas id="qrCanvas" class="qr-canvas" width="300" height="300"></canvas><div class="qr-manual"><label>Ou digite este endereco no celular:</label><code id="qrUrl"></code></div><div class="qr-actions"><button id="qrClose" class="qr-close focusable" type="button">Fechar</button></div></div>';
+      overlay.innerHTML = '<div class="qr-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:95vw;height:95vh;max-width:1000px;max-height:1000px;margin:auto;background:rgba(10,10,10,0.96);padding:24px;border-radius:24px;box-sizing:border-box;"><h2 style="margin:0 0 16px;color:#fff;font-size:1.5em;">Add Provider via QR Code</h2><p style="margin:0 0 12px;color:#ccc;">Escaneie com o celular para enviar uma lista pra TV.</p><canvas id="qrCanvas" class="qr-canvas" width="540" height="540" style="width:540px;height:540px;max-width:88vw;max-height:52vh;box-sizing:border-box;background:#fff;padding:14px;border-radius:12px;"></canvas><div class="qr-manual" style="margin-top:12px;text-align:center;"><label style="display:block;margin-bottom:8px;color:#ccc;">Ou digite este endereco no celular:</label><code id="qrUrl" style="font-size:1.05em;padding:8px 16px;background:#222;border-radius:8px;color:#fff;display:inline-block;max-width:86vw;word-break:break-all;white-space:normal;text-align:center;"></code></div><div class="qr-actions" style="margin-top:12px;"><button id="qrClose" class="qr-close focusable" type="button" style="padding:12px 24px;font-size:1.1em;">Fechar</button></div></div>';
       document.body.appendChild(overlay);
-      var url = window.CloudSync.getQrUrl();
+      
+      if (!this._fixedQrUrl) {
+        try {
+          var cacheKey = 'xtreamlytv.cloudsync.qrUrl';
+          var cached = localStorage.getItem(cacheKey);
+          if (cached) { this._fixedQrUrl = cached; } 
+          else { this._fixedQrUrl = window.CloudSync.getQrUrl(); localStorage.setItem(cacheKey, this._fixedQrUrl); }
+        } catch (e) { this._fixedQrUrl = window.CloudSync.getQrUrl(); }
+      }
+      var url = this._fixedQrUrl;
+      
       var qr = qrcode(0, 'M');
       qr.addData(url);
       qr.make();
       var canvas = document.getElementById('qrCanvas');
       var ctx = canvas.getContext('2d');
       var count = qr.getModuleCount();
-      var cell = Math.floor(300 / count);
-      var off = Math.floor((300 - cell * count) / 2);
+      var size = 540;
+      var cell = Math.floor(size / count);
+      var off = Math.floor((size - cell * count) / 2);
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, 300, 300);
+      ctx.fillRect(0, 0, size, size);
       ctx.fillStyle = '#000';
       for (var r2 = 0; r2 < count; r2++) { for (var c2 = 0; c2 < count; c2++) { if (qr.isDark(r2, c2)) ctx.fillRect(off + c2 * cell, off + r2 * cell, cell, cell); } }
       document.getElementById('qrUrl').textContent = url;
-      overlay.addEventListener('keydown', function (e) {
-        if (e.keyCode === 27 || e.keyCode === 466) { e.preventDefault(); e.stopPropagation(); overlay.remove(); }
-      }, true);
-      document.getElementById('qrClose').addEventListener('click', function () { overlay.remove(); });
+      
+      var closeQrOverlay = function () {
+        document.removeEventListener('keydown', qrKeyHandler, true);
+        if (overlay.parentNode) overlay.remove();
+      };
+      var qrKeyHandler = function (e) {
+        if (!document.querySelector('.qr-overlay')) { document.removeEventListener('keydown', qrKeyHandler, true); return; }
+        if (e.keyCode === 27 || e.keyCode === 461 || e.keyCode === 466) { e.preventDefault(); e.stopPropagation(); closeQrOverlay(); }
+      };
+      document.addEventListener('keydown', qrKeyHandler, true);
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) closeQrOverlay(); });
+      document.getElementById('qrClose').addEventListener('click', function () { closeQrOverlay(); });
+      
       setTimeout(function () { var b = document.getElementById('qrClose'); if (b) b.focus(); }, 0);
       window.CloudSync.init(function (playlist, markLoaded) { self.processPlaylist(playlist, markLoaded); });
     },
@@ -3002,6 +3022,7 @@
         else if (event.keyCode === PAUSE) { event.preventDefault(); var pauseVideo = document.getElementById('video'); if (pauseVideo) { try { pauseVideo.pause(); } catch (pauseError) { /* ignore */ } this.updateTransportState(pauseVideo); } this.showOverlay(true); }
         else if (event.keyCode === GREEN && this.playerType === 'live') { event.preventDefault(); this.goToLive(); }
         else if (event.keyCode === RED) { event.preventDefault(); this.toggleCurrentFavorite(); }
+        else if (event.keyCode === BLUE) { event.preventDefault(); this.toggleTracksPanel(); }
         return;
       }
       if (event.keyCode === RED) {
@@ -3037,6 +3058,100 @@
         if (window.webOS && typeof window.webOS.platformBack === 'function') window.webOS.platformBack();
         else window.close();
       } catch (error) { window.close(); }
+    },
+
+    toggleTracksPanel: function () {
+      var panel = document.getElementById('tracksPanel');
+      if (!panel) return;
+      if (panel.style.display === 'block') {
+        if (this._tracksAutoHide) { clearTimeout(this._tracksAutoHide); this._tracksAutoHide = null; }
+        panel.style.display = 'none';
+      } else {
+        this.openTracksPanel();
+      }
+    },
+
+    openTracksPanel: function () {
+      var panel = document.getElementById('tracksPanel');
+      var video = document.getElementById('video');
+      if (!panel || !video) return;
+      var self = this;
+      panel.innerHTML = this.buildTracksPanelHTML(video);
+      panel.style.display = 'block';
+      var first = panel.querySelector('button');
+      if (first) first.focus();
+      
+      var resetTracksTimer = function () {
+        if (self._tracksAutoHide) clearTimeout(self._tracksAutoHide);
+        self._tracksAutoHide = setTimeout(function () { panel.style.display = 'none'; }, 30000);
+      };
+      resetTracksTimer();
+      panel.addEventListener('click', resetTracksTimer);
+      panel.addEventListener('mousedown', resetTracksTimer);
+      panel.addEventListener('touchstart', resetTracksTimer);
+
+      panel.onclick = function (e) {
+        var b = e.target.closest ? e.target.closest('button') : null;
+        if (!b) return;
+        var kind = b.getAttribute('data-kind');
+        var idx = parseInt(b.getAttribute('data-idx'), 10);
+        if (kind === 'sub') self.selectSubtitleTrack(video, idx);
+        else if (kind === 'suboff') self.selectSubtitleTrack(video, -1);
+        else if (kind === 'aud') self.selectAudioTrack(video, idx);
+        panel.innerHTML = self.buildTracksPanelHTML(video);
+      };
+
+      if (!this._tracksKeyBound) {
+        this._tracksKeyBound = true;
+        document.addEventListener('keydown', function (e) {
+          var p = document.getElementById('tracksPanel');
+          if (!p || p.style.display === 'none') return;
+          var btns = Array.prototype.slice.call(p.querySelectorAll('button'));
+          var cur = btns.indexOf(document.activeElement);
+          if (e.keyCode === 38 || e.keyCode === 40) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            var next = e.keyCode === 40 ? Math.min(btns.length - 1, cur + 1) : Math.max(0, cur - 1);
+            if (cur < 0) next = 0;
+            btns[next].focus();
+          } else if (e.keyCode === 461 || e.keyCode === 27) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            if (self._tracksAutoHide) { clearTimeout(self._tracksAutoHide); self._tracksAutoHide = null; }
+            p.style.display = 'none';
+          }
+        }, true);
+      }
+    },
+
+    buildTracksPanelHTML: function (video) {
+      var html = '<h4 style="margin:0 0 6px;color:#6cf;">Legendas</h4>';
+      var tts = video.textTracks || [];
+      if (!tts.length) html += '<div style="color:#888;font-size:12px;">Sem faixas (stream TS ou sem legendas)</div>';
+      for (var i = 0; i < tts.length; i++) {
+        var on = tts[i].mode === 'hidden' || tts[i].mode === 'showing';
+        html += '<button class="focusable" data-kind="sub" data-idx="' + i + '" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:' + (on ? '#144' : '#222') + ';color:#fff;border:1px solid #555;text-align:left;">' + (on ? '✓ ' : '') + (tts[i].language || ('Faixa ' + (i + 1))) + '</button>';
+      }
+      if (tts.length) html += '<button class="focusable" data-kind="suboff" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:#222;color:#faa;border:1px solid #555;text-align:left;">Desligadas</button>';
+      html += '<h4 style="margin:10px 0 6px;color:#6cf;">Áudio</h4>';
+      var auds = (video._hls && video._hls.audioTracks) ? video._hls.audioTracks : (video.audioTracks || []);
+      if (!auds.length) html += '<div style="color:#888;font-size:12px;">Sem faixas de áudio alternativas</div>';
+      for (var j = 0; j < auds.length; j++) {
+        var cur = video._hls ? (video._hls.audioTrack === j) : (auds[j].enabled);
+        var lab = auds[j].lang || auds[j].language || auds[j].name || ('Faixa ' + (j + 1));
+        html += '<button class="focusable" data-kind="aud" data-idx="' + j + '" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:' + (cur ? '#144' : '#222') + ';color:#fff;border:1px solid #555;text-align:left;">' + (cur ? '✓ ' : '') + lab + '</button>';
+      }
+      return html;
+    },
+
+    selectSubtitleTrack: function (video, idx) {
+      if (video._hls) { try { video._hls.subtitleDisplay = false; video._hls.subtitleTrack = idx; } catch (e) {} }
+      var tts = video.textTracks || [];
+      for (var i = 0; i < tts.length; i++) { try { tts[i].mode = (i === idx) ? 'hidden' : 'disabled'; } catch (e) {} }
+    },
+
+    selectAudioTrack: function (video, idx) {
+      if (video._hls) { try { video._hls.audioTrack = idx; } catch (e) {} return; }
+      var ats = video.audioTracks || [];
+      for (var i = 0; i < ats.length; i++) { try { ats[i].enabled = (i === idx); } catch (e) {} }
     }
   };
 
