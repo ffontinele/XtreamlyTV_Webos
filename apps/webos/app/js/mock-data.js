@@ -17,6 +17,8 @@
       { category_id: '6', category_name: 'Movies' }
     ],
     liveStreams: [
+      { num: 1, name: '🧪 BipBop Legendas VTT', stream_id: 9999, stream_icon: '', category_id: '1', epg_channel_id: 'bipbop.test', content_type: 'live', custom_url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8' },
+
       { num: 2, name: 'Metro News', stream_id: 1001, stream_icon: '', category_id: '2', epg_channel_id: 'metro.news', content_type: 'live' },
       { num: 14, name: 'Stadium One', stream_id: 1002, stream_icon: '', category_id: '3', epg_channel_id: 'stadium.one', content_type: 'live' },
       { num: 19, name: 'North Sports', stream_id: 1003, stream_icon: '', category_id: '3', epg_channel_id: 'north.sports', content_type: 'live' },

@@ -232,16 +232,23 @@
       var self = this;
       var overlay = document.createElement('div');
       overlay.className = 'qr-overlay';
-      overlay.innerHTML = '<div class="qr-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:95vw;height:95vh;max-width:1000px;max-height:1000px;margin:auto;background:rgba(10,10,10,0.96);padding:24px;border-radius:24px;box-sizing:border-box;"><h2 style="margin:0 0 16px;color:#fff;font-size:1.5em;">Add Provider via QR Code</h2><p style="margin:0 0 12px;color:#ccc;">Escaneie com o celular para enviar uma lista pra TV.</p><canvas id="qrCanvas" class="qr-canvas" width="540" height="540" style="width:540px;height:540px;max-width:88vw;max-height:52vh;box-sizing:border-box;background:#fff;padding:14px;border-radius:12px;"></canvas><div class="qr-manual" style="margin-top:12px;text-align:center;"><label style="display:block;margin-bottom:8px;color:#ccc;">Ou digite este endereco no celular:</label><code id="qrUrl" style="font-size:1.05em;padding:8px 16px;background:#222;border-radius:8px;color:#fff;display:inline-block;max-width:86vw;word-break:break-all;white-space:normal;text-align:center;"></code></div><div class="qr-actions" style="margin-top:12px;"><button id="qrClose" class="qr-close focusable" type="button" style="padding:12px 24px;font-size:1.1em;">Fechar</button></div></div>';
+      overlay.innerHTML = '<div class="qr-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:95vw;height:95vh;max-width:1000px;max-height:1000px;margin:auto;background:rgba(10,10,10,0.96);padding:24px;border-radius:24px;box-sizing:border-box;"><h2 style="margin:0 0 16px;color:#fff;font-size:1.5em;">Add Provider via QR Code</h2><p style="margin:0 0 12px;color:#ccc;">Escaneie com o celular para enviar uma lista pra TV.</p><canvas id="qrCanvas" class="qr-canvas" width="900" height="900" style="width:540px;height:540px;max-width:88vw;max-height:52vh;box-sizing:border-box;background:#fff;padding:14px;border-radius:12px;"></canvas><div class="qr-manual" style="margin-top:12px;text-align:center;"><label style="display:block;margin-bottom:8px;color:#ccc;">Ou digite este endereco no celular:</label><code id="qrUrl" style="font-size:1.05em;padding:8px 16px;background:#222;border-radius:8px;color:#fff;display:inline-block;max-width:86vw;word-break:break-all;white-space:normal;text-align:center;"></code></div><div class="qr-actions" style="margin-top:12px;"><button id="qrClose" class="qr-close focusable" type="button" style="padding:12px 24px;font-size:1.1em;">Fechar</button></div></div>';
       document.body.appendChild(overlay);
       
+      // Lógica de URL Fixo: Cache no localStorage para o código de pareamento NUNCA mudar
       if (!this._fixedQrUrl) {
         try {
           var cacheKey = 'xtreamlytv.cloudsync.qrUrl';
           var cached = localStorage.getItem(cacheKey);
-          if (cached) { this._fixedQrUrl = cached; } 
-          else { this._fixedQrUrl = window.CloudSync.getQrUrl(); localStorage.setItem(cacheKey, this._fixedQrUrl); }
-        } catch (e) { this._fixedQrUrl = window.CloudSync.getQrUrl(); }
+          if (cached) {
+            this._fixedQrUrl = cached;
+          } else {
+            this._fixedQrUrl = window.CloudSync.getQrUrl();
+            localStorage.setItem(cacheKey, this._fixedQrUrl);
+          }
+        } catch (e) {
+          this._fixedQrUrl = window.CloudSync.getQrUrl();
+        }
       }
       var url = this._fixedQrUrl;
       
@@ -251,7 +258,7 @@
       var canvas = document.getElementById('qrCanvas');
       var ctx = canvas.getContext('2d');
       var count = qr.getModuleCount();
-      var size = 540;
+      var size = 900;
       var cell = Math.floor(size / count);
       var off = Math.floor((size - cell * count) / 2);
       ctx.fillStyle = '#fff';
@@ -259,7 +266,6 @@
       ctx.fillStyle = '#000';
       for (var r2 = 0; r2 < count; r2++) { for (var c2 = 0; c2 < count; c2++) { if (qr.isDark(r2, c2)) ctx.fillRect(off + c2 * cell, off + r2 * cell, cell, cell); } }
       document.getElementById('qrUrl').textContent = url;
-      
       var closeQrOverlay = function () {
         document.removeEventListener('keydown', qrKeyHandler, true);
         if (overlay.parentNode) overlay.remove();
@@ -271,7 +277,6 @@
       document.addEventListener('keydown', qrKeyHandler, true);
       overlay.addEventListener('click', function (e) { if (e.target === overlay) closeQrOverlay(); });
       document.getElementById('qrClose').addEventListener('click', function () { closeQrOverlay(); });
-      
       setTimeout(function () { var b = document.getElementById('qrClose'); if (b) b.focus(); }, 0);
       window.CloudSync.init(function (playlist, markLoaded) { self.processPlaylist(playlist, markLoaded); });
     },
@@ -2318,6 +2323,14 @@
     },
 
     buildPlaybackCandidates: function (item, type) {
+      // Bloco 1 DEV: Suporte a URL direta para testes (ex: BipBop)
+      if (item && item.custom_url) {
+        return [{ url: item.custom_url, format: 'm3u8' }];
+      }
+      if (this.demo && item && item.stream_id && window.XtreamlyTVMock) {
+        var mockItem = (XtreamlyTVMock.liveStreams || []).find(function (st) { return String(st.stream_id) === String(item.stream_id); });
+        if (mockItem && mockItem.custom_url) return [{ url: mockItem.custom_url, format: 'm3u8' }];
+      }
       if (this.demo) return [];
       if (type === 'live') return this.api.getLiveCandidates(item.stream_id, this.providerAllowedFormats());
       return this.api.getMediaCandidates(type, idOf(item, type), item.container_extension);
@@ -2482,11 +2495,11 @@
       var player = document.createElement('section');
       player.className = 'player overlay';
       player.id = 'player';
-      player.innerHTML = '<video id="video" autoplay playsinline webkit-playsinline preload="auto"></video><div class="player-shade"></div>' +
+      player.innerHTML = '<video id="video" autoplay playsinline webkit-playsinline preload="auto"></video><div class="player-shade"></div><div id="subtitleOverlay" class="subtitle-overlay"><span class="subtitle-text"></span></div><div id="tracksPanel" style="display:none;position:absolute;right:12px;bottom:100px;z-index:300;background:rgba(10,10,14,0.94);border:1px solid #345;border-radius:10px;padding:14px;width:300px;max-height:62%;overflow-y:auto;"></div>' +
         '<div id="playerLoading" class="player-loading"><div class="spinner"></div><strong id="playerLoadingText">Opening stream…</strong><span id="playerFormatLabel"></span></div>' +
         '<div class="player-top"><div class="player-brand"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"></div><div class="player-clock">' + formatTime(new Date()) + '</div></div>' +
         '<div class="player-bottom"><div id="playerTimeline" class="player-timeline"><span id="currentTime">0:00</span><div id="playerProgressTrack" class="player-progress"><i id="playerProgress"></i><b id="playerScrubber"></b></div><span id="durationTime">0:00</span><button id="goLiveButton" class="go-live-button" type="button">Go Live</button></div>' +
-        '<div class="player-transport"><button id="rewindButton" type="button">−10</button><button id="playPauseButton" class="play-pause-button" type="button">Pause</button><button id="forwardButton" type="button">+30</button></div>' +
+        '<div class="player-transport"><button id="rewindButton" type="button">−10</button><button id="playPauseButton" class="play-pause-button" type="button">Pause</button><button id="forwardButton" type="button">+30</button><button id="tracksButton" type="button" style="margin-left:10px;padding:5px 10px;background:#333;color:#6cf;border:1px solid #6cf;">CC/Áudio</button></div>' +
         '<div class="player-info"><div id="playerArtwork">' + artwork + '</div><div><div id="playerTitle" class="player-channel">' + escapeHtml(type === 'episode' ? episodeTitle(item) : titleOf(item)) + '</div><div id="playerProgram" class="player-program">' + escapeHtml(this.mediaSubtitle(item, type)) + '</div><div id="playerDescription" class="player-program-description">' + escapeHtml(type === 'live' ? '' : descriptionOf(item)) + '</div></div>' +
         '<div class="player-hints">' + hints + '<br><span class="key">BACK</span> Exit player</div></div></div>';
       if (!this.playerHost) {
@@ -2496,6 +2509,19 @@
       this.playerHost.innerHTML = '';
       this.playerHost.appendChild(player);
       this.playerHost.classList.add('active');
+      var videoEl = document.getElementById('video');
+      if (videoEl) {
+        if (window.XtreamlyHls) window.XtreamlyHls.patch(videoEl);
+        if (this._modeGuard) clearInterval(this._modeGuard);
+        this._modeGuard = setInterval(function () {
+          var v = document.getElementById('video');
+          if (!v) return;
+          if (window.XtreamlyTVApp && window.XtreamlyTVApp.forceHiddenModes) window.XtreamlyTVApp.forceHiddenModes(v);
+        }, 1000);
+        this.setupSubtitleTracks(videoEl);
+        var selfRef = this;
+        videoEl.addEventListener('loadedmetadata', function () { selfRef.autoSelectPortugueseSubtitle(videoEl); });
+      }
       this.playerHost.setAttribute('aria-hidden', 'false');
       document.body.classList.add('video-mode');
       document.documentElement.classList.add('video-mode');
@@ -2505,6 +2531,10 @@
       this.loadPlayerEpg(item);
 
       document.getElementById('rewindButton').addEventListener('click', function () { self.seek(-10); });
+      var tracksBtn = document.getElementById('tracksButton');
+      if (tracksBtn) {
+        tracksBtn.addEventListener('click', function () { self.openTracksPanel(); });
+      }
       document.getElementById('forwardButton').addEventListener('click', function () { self.seek(30); });
       document.getElementById('playPauseButton').addEventListener('click', function () { self.togglePlayback(); });
       document.getElementById('goLiveButton').addEventListener('click', function () { self.goToLive(); });
@@ -2889,7 +2919,136 @@
       }, 4200);
     },
 
+    toggleTracksPanel: function () {
+      var panel = document.getElementById('tracksPanel');
+      if (!panel) return;
+      if (panel.style.display === 'block') {
+        if (this._tracksAutoHide) { clearTimeout(this._tracksAutoHide); this._tracksAutoHide = null; }
+        panel.style.display = 'none';
+      } else {
+        this.openTracksPanel();
+      }
+    },
+
+    openTracksPanel: function () {
+      var panel = document.getElementById('tracksPanel');
+      var video = document.getElementById('video');
+      if (!panel || !video) return;
+      var self = this;
+      panel.innerHTML = this.buildTracksPanelHTML(video);
+      panel.style.display = 'block';
+      var first = panel.querySelector('button');
+      if (first) first.focus();
+      // Lógica de "Tela de Bloqueio": Timer só conta após inatividade
+      var resetTracksTimer = function () {
+        if (self._tracksAutoHide) clearTimeout(self._tracksAutoHide);
+        self._tracksAutoHide = setTimeout(function () {
+          panel.style.display = "none";
+        }, 30000);
+      };
+      resetTracksTimer();
+      panel.addEventListener('click', resetTracksTimer);
+      panel.addEventListener('mousedown', resetTracksTimer);
+      panel.addEventListener('touchstart', resetTracksTimer);
+      
+      panel.onclick = function (e) {
+        var b = e.target.closest ? e.target.closest('button') : null;
+        if (!b) return;
+        var kind = b.getAttribute('data-kind');
+        var idx = parseInt(b.getAttribute('data-idx'), 10);
+        if (kind === 'sub') self.selectSubtitleTrack(video, idx);
+        else if (kind === 'suboff') self.selectSubtitleTrack(video, -1);
+        else if (kind === 'aud') self.selectAudioTrack(video, idx);
+        panel.innerHTML = self.buildTracksPanelHTML(video);
+      };
+      if (!this._tracksKeyBound) {
+        this._tracksKeyBound = true;
+        document.addEventListener('keydown', function (e) {
+          var p = document.getElementById('tracksPanel');
+          if (!p || p.style.display === 'none') return;
+          var btns = Array.prototype.slice.call(p.querySelectorAll('button'));
+          var cur = btns.indexOf(document.activeElement);
+          if (e.keyCode === 38 || e.keyCode === 40) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            var next = e.keyCode === 40 ? Math.min(btns.length - 1, cur + 1) : Math.max(0, cur - 1);
+            if (cur < 0) next = 0;
+            btns[next].focus();
+          } else if (e.keyCode === 461 || e.keyCode === 27) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            p.style.display = 'none';
+          }
+        }, true);
+      }
+    },
+
+    buildTracksPanelHTML: function (video) {
+      var html = '<h4 style="margin:0 0 6px;color:#6cf;">Legendas</h4>';
+      var tts = video.textTracks || [];
+      if (!tts.length) html += '<div style="color:#888;font-size:12px;">Sem faixas (stream TS ou sem legendas)</div>';
+      for (var i = 0; i < tts.length; i++) {
+        var on = tts[i].mode === 'hidden' || tts[i].mode === 'showing';
+        html += '<button class="focusable" data-kind="sub" data-idx="' + i + '" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:' + (on ? '#144' : '#222') + ';color:#fff;border:1px solid #555;text-align:left;">' + (on ? '✓ ' : '') + (tts[i].language || ('Faixa ' + (i + 1))) + '</button>';
+      }
+      if (tts.length) html += '<button class="focusable" data-kind="suboff" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:#222;color:#faa;border:1px solid #555;text-align:left;">Desligadas</button>';
+      html += '<h4 style="margin:10px 0 6px;color:#6cf;">Áudio</h4>';
+      var auds = (video._hls && video._hls.audioTracks) ? video._hls.audioTracks : (video.audioTracks || []);
+      if (!auds.length) html += '<div style="color:#888;font-size:12px;">Sem faixas de áudio alternativas</div>';
+      for (var j = 0; j < auds.length; j++) {
+        var cur = video._hls ? (video._hls.audioTrack === j) : (auds[j].enabled);
+        var lab = auds[j].lang || auds[j].language || auds[j].name || ('Faixa ' + (j + 1));
+        html += '<button class="focusable" data-kind="aud" data-idx="' + j + '" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:' + (cur ? '#144' : '#222') + ';color:#fff;border:1px solid #555;text-align:left;">' + (cur ? '✓ ' : '') + lab + '</button>';
+      }
+      return html;
+    },
+
+    selectSubtitleTrack: function (video, idx) {
+      if (video._hls) {
+        try {
+          video._hls.subtitleDisplay = false;
+          video._hls.subtitleTrack = idx;
+        } catch (e) {}
+      }
+      var tts = video.textTracks || [];
+      for (var i = 0; i < tts.length; i++) {
+        try { tts[i].mode = (i === idx) ? 'hidden' : 'disabled'; } catch (e) {}
+      }
+      this.renderSubtitleCue(video);
+    },
+
+    selectAudioTrack: function (video, idx) {
+      if (video._hls) { try { video._hls.audioTrack = idx; } catch (e) {} return; }
+      var ats = video.audioTracks || [];
+      for (var i = 0; i < ats.length; i++) { try { ats[i].enabled = (i === idx); } catch (e) {} }
+    },
+
+    autoSelectPortugueseAudio: function (video) {
+      if (video._hls) {
+        var list = video._hls.audioTracks || [];
+        for (var i = 0; i < list.length; i++) {
+          var lang = (list[i].lang || '').toLowerCase();
+          if (lang === 'pt' || lang === 'por' || lang.indexOf('pt') === 0) { try { video._hls.audioTrack = i; } catch (e) {} return; }
+        }
+        return;
+      }
+      var ats = video.audioTracks || [];
+      for (var j = 0; j < ats.length; j++) {
+        var l2 = (ats[j].language || '').toLowerCase();
+        if (l2 === 'pt' || l2 === 'por' || l2.indexOf('pt') === 0) { try { ats[j].enabled = true; } catch (e) {} return; }
+      }
+    },
     closePlayer: function () {
+      if (this._modeGuard) { clearInterval(this._modeGuard); this._modeGuard = null; }
+      if (this._tracksAutoHide) { clearTimeout(this._tracksAutoHide); this._tracksAutoHide = null; }
+      var dyingVideo = document.getElementById("video");
+      if (dyingVideo) {
+        try { dyingVideo.pause(); } catch (e) {}
+        dyingVideo.src = "";
+        if (dyingVideo._hls) {
+          try { dyingVideo._hls.destroy(); } catch (e) {}
+          dyingVideo._hls = null;
+        }
+      }
+      if (this._modeGuard) { clearInterval(this._modeGuard); this._modeGuard = null; }
       // Defensive lock reset (prevents stuck state between sessions)
       this.playbackFailureLock = false;
       this.playbackSwitching = false;
@@ -2962,6 +3121,84 @@
       this.loadPlaybackCandidate(0, 'Changing channel…');
       this.showOverlay();
     },
+
+
+    // ============ LEGENDAS (Bloco 1 - DEV) ============
+
+    setupSubtitleTracks: function (video) {
+      var self = this;
+      var overlay = document.querySelector('#subtitleOverlay .subtitle-text');
+      if (!overlay) return;
+
+      // Ativa todas as tracks de texto (padrao webOS deixa 'disabled')
+      var activate = function () {
+        for (var i = 0; i < video.textTracks.length; i++) {
+          try { video.textTracks[i].mode = 'hidden'; } catch (e) {}
+        }
+        self.renderSubtitleCue(video);
+      };
+      video.addEventListener('loadedmetadata', activate);
+      if (video.readyState >= 1) activate();
+
+      // Escuta cuechange em todas as tracks
+      var attachCueChange = function () {
+        for (var i = 0; i < video.textTracks.length; i++) {
+          (function (track) {
+            track.addEventListener('cuechange', function () { self.renderSubtitleCue(video); });
+          })(video.textTracks[i]);
+        }
+      };
+      video.addEventListener('loadedmetadata', attachCueChange);
+      if (video.textTracks && video.textTracks.addEventListener) {
+        video.textTracks.addEventListener('addtrack', function () {
+          for (var j = 0; j < video.textTracks.length; j++) {
+            (function (track) {
+              if (track.mode === 'showing') { try { track.mode = 'hidden'; } catch (e) {} }
+              track.addEventListener('cuechange', function () { self.renderSubtitleCue(video); });
+            })(video.textTracks[j]);
+          }
+          self.renderSubtitleCue(video);
+        });
+      }
+      if (video.readyState >= 1) attachCueChange();
+    },
+
+    renderSubtitleCue: function (video) {
+      var overlay = document.querySelector('#subtitleOverlay .subtitle-text');
+      if (!overlay) return;
+      var text = '';
+      for (var i = 0; i < video.textTracks.length; i++) {
+        var track = video.textTracks[i];
+        if (track.mode !== 'hidden' && track.mode !== 'showing') continue;
+        if (track.activeCues && track.activeCues.length > 0) {
+          var cue = track.activeCues[0];
+          if (cue.text) text += cue.text;
+        }
+      }
+      // Strip tags VTT comuns (<c>, <i>, etc) para render limpo
+      text = text.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      overlay.textContent = text.trim();
+    },
+
+    autoSelectPortugueseSubtitle: function (video) {
+      if (!video.textTracks || video.textTracks.length === 0) return;
+      var idx = 0;
+      for (var i = 0; i < video.textTracks.length; i++) {
+        var lang = (video.textTracks[i].language || '').toLowerCase();
+        if (lang === 'pt' || lang === 'pt-br' || lang === 'por' || lang.indexOf('pt') === 0) { idx = i; break; }
+      }
+      if (video._hls) {
+        try {
+          video._hls.subtitleDisplay = false;
+          video._hls.subtitleTrack = idx;
+        } catch (e) {}
+      }
+      for (var j = 0; j < video.textTracks.length; j++) {
+        try { video.textTracks[j].mode = (j === idx) ? 'hidden' : 'disabled'; } catch (e) {}
+      }
+      this.renderSubtitleCue(video);
+    },
+    // ============ FIM LEGENDAS (Bloco 1 - DEV) ============
 
     seekToRatio: function (ratio) {
       var video = document.getElementById('video');
@@ -3058,100 +3295,6 @@
         if (window.webOS && typeof window.webOS.platformBack === 'function') window.webOS.platformBack();
         else window.close();
       } catch (error) { window.close(); }
-    },
-
-    toggleTracksPanel: function () {
-      var panel = document.getElementById('tracksPanel');
-      if (!panel) return;
-      if (panel.style.display === 'block') {
-        if (this._tracksAutoHide) { clearTimeout(this._tracksAutoHide); this._tracksAutoHide = null; }
-        panel.style.display = 'none';
-      } else {
-        this.openTracksPanel();
-      }
-    },
-
-    openTracksPanel: function () {
-      var panel = document.getElementById('tracksPanel');
-      var video = document.getElementById('video');
-      if (!panel || !video) return;
-      var self = this;
-      panel.innerHTML = this.buildTracksPanelHTML(video);
-      panel.style.display = 'block';
-      var first = panel.querySelector('button');
-      if (first) first.focus();
-      
-      var resetTracksTimer = function () {
-        if (self._tracksAutoHide) clearTimeout(self._tracksAutoHide);
-        self._tracksAutoHide = setTimeout(function () { panel.style.display = 'none'; }, 30000);
-      };
-      resetTracksTimer();
-      panel.addEventListener('click', resetTracksTimer);
-      panel.addEventListener('mousedown', resetTracksTimer);
-      panel.addEventListener('touchstart', resetTracksTimer);
-
-      panel.onclick = function (e) {
-        var b = e.target.closest ? e.target.closest('button') : null;
-        if (!b) return;
-        var kind = b.getAttribute('data-kind');
-        var idx = parseInt(b.getAttribute('data-idx'), 10);
-        if (kind === 'sub') self.selectSubtitleTrack(video, idx);
-        else if (kind === 'suboff') self.selectSubtitleTrack(video, -1);
-        else if (kind === 'aud') self.selectAudioTrack(video, idx);
-        panel.innerHTML = self.buildTracksPanelHTML(video);
-      };
-
-      if (!this._tracksKeyBound) {
-        this._tracksKeyBound = true;
-        document.addEventListener('keydown', function (e) {
-          var p = document.getElementById('tracksPanel');
-          if (!p || p.style.display === 'none') return;
-          var btns = Array.prototype.slice.call(p.querySelectorAll('button'));
-          var cur = btns.indexOf(document.activeElement);
-          if (e.keyCode === 38 || e.keyCode === 40) {
-            e.preventDefault(); e.stopImmediatePropagation();
-            var next = e.keyCode === 40 ? Math.min(btns.length - 1, cur + 1) : Math.max(0, cur - 1);
-            if (cur < 0) next = 0;
-            btns[next].focus();
-          } else if (e.keyCode === 461 || e.keyCode === 27) {
-            e.preventDefault(); e.stopImmediatePropagation();
-            if (self._tracksAutoHide) { clearTimeout(self._tracksAutoHide); self._tracksAutoHide = null; }
-            p.style.display = 'none';
-          }
-        }, true);
-      }
-    },
-
-    buildTracksPanelHTML: function (video) {
-      var html = '<h4 style="margin:0 0 6px;color:#6cf;">Legendas</h4>';
-      var tts = video.textTracks || [];
-      if (!tts.length) html += '<div style="color:#888;font-size:12px;">Sem faixas (stream TS ou sem legendas)</div>';
-      for (var i = 0; i < tts.length; i++) {
-        var on = tts[i].mode === 'hidden' || tts[i].mode === 'showing';
-        html += '<button class="focusable" data-kind="sub" data-idx="' + i + '" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:' + (on ? '#144' : '#222') + ';color:#fff;border:1px solid #555;text-align:left;">' + (on ? '✓ ' : '') + (tts[i].language || ('Faixa ' + (i + 1))) + '</button>';
-      }
-      if (tts.length) html += '<button class="focusable" data-kind="suboff" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:#222;color:#faa;border:1px solid #555;text-align:left;">Desligadas</button>';
-      html += '<h4 style="margin:10px 0 6px;color:#6cf;">Áudio</h4>';
-      var auds = (video._hls && video._hls.audioTracks) ? video._hls.audioTracks : (video.audioTracks || []);
-      if (!auds.length) html += '<div style="color:#888;font-size:12px;">Sem faixas de áudio alternativas</div>';
-      for (var j = 0; j < auds.length; j++) {
-        var cur = video._hls ? (video._hls.audioTrack === j) : (auds[j].enabled);
-        var lab = auds[j].lang || auds[j].language || auds[j].name || ('Faixa ' + (j + 1));
-        html += '<button class="focusable" data-kind="aud" data-idx="' + j + '" style="display:block;width:100%;margin:2px 0;padding:6px 8px;background:' + (cur ? '#144' : '#222') + ';color:#fff;border:1px solid #555;text-align:left;">' + (cur ? '✓ ' : '') + lab + '</button>';
-      }
-      return html;
-    },
-
-    selectSubtitleTrack: function (video, idx) {
-      if (video._hls) { try { video._hls.subtitleDisplay = false; video._hls.subtitleTrack = idx; } catch (e) {} }
-      var tts = video.textTracks || [];
-      for (var i = 0; i < tts.length; i++) { try { tts[i].mode = (i === idx) ? 'hidden' : 'disabled'; } catch (e) {} }
-    },
-
-    selectAudioTrack: function (video, idx) {
-      if (video._hls) { try { video._hls.audioTrack = idx; } catch (e) {} return; }
-      var ats = video.audioTracks || [];
-      for (var i = 0; i < ats.length; i++) { try { ats[i].enabled = (i === idx); } catch (e) {} }
     }
   };
 
