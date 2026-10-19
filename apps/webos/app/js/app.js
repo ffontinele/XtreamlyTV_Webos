@@ -999,11 +999,11 @@
         return;
       }
       var recent = this.state.recent || [];
-      var livePreview = recent.filter(function (item) { return typeOf(item) === 'live'; }).slice(0, 7);
-      var moviePreview = recent.filter(function (item) { return typeOf(item) === 'movie'; }).slice(0, 7);
+      var livePreview = recent.filter(function (item) { return typeOf(item) === 'live'; });
+      var moviePreview = recent.filter(function (item) { return typeOf(item) === 'movie'; });
       var seriesPreview = uniqueById(recent.map(function (item) {
         return typeOf(item) === 'episode' && item.parent_series ? item.parent_series : item;
-      }).filter(function (item) { return typeOf(item) === 'series'; }), 'series').slice(0, 7);
+      }).filter(function (item) { return typeOf(item) === 'series'; }), 'series');
       var featured = recent[0] || this.loadedItems('live')[0];
       var featuredType = featured ? typeOf(featured) : 'live';
       view.innerHTML = '<div class="scroll-view">' +
