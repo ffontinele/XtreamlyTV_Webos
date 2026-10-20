@@ -301,37 +301,44 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
-      // universal wheel fix v3: roda rola o container interno sob o cursor, com suavizacao por frame
+      // universal wheel fix v4: resolve o container pela POSICAO do cursor (elementFromPoint)
       (function () {
-        var acc = 0, pending = false;
+        var acc = 0, pending = false, lastBox = null;
         document.addEventListener('wheel', function (e) {
+          var sel = '.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host';
+          var box = null;
           var t = e.target;
-          if (!t || !t.closest) return;
-          var box = t.closest('.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host');
-          if (!box) {
-            var lb = t.closest('.library-browser');
-            if (lb) box = lb.querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
+          if (t && t.closest) box = t.closest(sel);
+          if (!box && typeof document.elementFromPoint === 'function') {
+            var el = document.elementFromPoint(e.clientX, e.clientY);
+            if (el && el.closest) box = el.closest(sel);
+            if (!box && el && el.closest && el.closest('.library-browser')) box = el.closest('.library-browser').querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
           }
+          if (!box && t && t.closest && t.closest('.library-browser')) box = t.closest('.library-browser').querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
           if (!box) return;
           var d = e.deltaY || 0;
+          if (!d) return;
           if (e.deltaMode === 1) d *= 60;
           else if (e.deltaMode === 2) d *= box.clientHeight;
           d *= 2;
           if (d > 480) d = 480;
           if (d < -480) d = -480;
           var max = box.scrollHeight - box.clientHeight;
-          var can = (d > 0 && (box.scrollTop + acc) < max - 1) || (d < 0 && (box.scrollTop + acc) > 0);
-          if (!can) return;
+          if (max <= 0) return;
+          var proj = box.scrollTop + acc;
+          var can = (d > 0 && proj < max - 1) || (d < 0 && proj > 0);
+          if (!can) { acc = 0; return; }
           e.preventDefault();
           e.stopPropagation();
           acc += d;
-          var targetBox = box;
+          lastBox = box;
           if (!pending) {
             pending = true;
             requestAnimationFrame(function () {
               pending = false;
-              var m = targetBox.scrollHeight - targetBox.clientHeight;
-              targetBox.scrollTop = Math.max(0, Math.min(m, targetBox.scrollTop + acc));
+              if (!lastBox) { acc = 0; return; }
+              var m = lastBox.scrollHeight - lastBox.clientHeight;
+              lastBox.scrollTop = Math.max(0, Math.min(m, lastBox.scrollTop + acc));
               acc = 0;
             });
           }
