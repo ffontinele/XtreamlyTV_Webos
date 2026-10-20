@@ -2969,6 +2969,20 @@ body.video-mode #app,
   min-width: 90px;
 }
 
+/* provider rows no-squeeze: linhas mantem altura natural e a lista rola */
+.provider-manager-item,
+.provider-login-card {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+.provider-manager-info strong,
+.provider-login-copy strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 /* ---------- Provider editor ---------- */
 
