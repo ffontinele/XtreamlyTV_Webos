@@ -301,6 +301,21 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
+      // provider wheel fix: a roda do controle rola a lista interna de providers, nao a pagina
+      document.addEventListener('wheel', function (e) {
+        var t = e.target;
+        var box = t && t.closest ? t.closest('.provider-manager, .provider-login-list') : null;
+        if (!box) return;
+        var d = e.deltaY || 0;
+        if (e.deltaMode === 1) d *= 40;
+        else if (e.deltaMode === 2) d *= box.clientHeight;
+        var max = box.scrollHeight - box.clientHeight;
+        var can = (d > 0 && box.scrollTop < max - 1) || (d < 0 && box.scrollTop > 0);
+        if (!can) return;
+        e.preventDefault();
+        e.stopPropagation();
+        box.scrollTop = Math.max(0, Math.min(max, box.scrollTop + d));
+      }, { passive: false, capture: true });
       // provider scroll fix: rola a lista de providers junto com o foco do controle
       document.addEventListener('focusin', function (e) {
         var t = e.target;
