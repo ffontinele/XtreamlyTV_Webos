@@ -2932,6 +2932,7 @@
       }, 4200);
     },
 
+    // v2 skip intro relativo: memoriza so o INICIO da abertura; pulo sempre relativo ao ponto atual
     skipIntroMemoryFor: function () {
       var key = null;
       if (this.playerType === 'episode' && this.playerParent) key = idOf(this.playerParent, 'series');
@@ -2941,16 +2942,16 @@
         var v = window.localStorage.getItem('xtreamlytv.skipintro.' + key);
         if (!v) return null;
         var o = JSON.parse(v);
-        return (o && isFinite(o.s) && isFinite(o.e)) ? o : null;
+        return (o && isFinite(o.s)) ? o : null;
       } catch (e) { return null; }
     },
 
-    saveSkipIntroMemory: function (start, end) {
+    saveSkipIntroMemory: function (start) {
       var key = null;
       if (this.playerType === 'episode' && this.playerParent) key = idOf(this.playerParent, 'series');
       else if (this.playerType === 'movie') key = idOf(this.playerMedia, 'movie');
       if (!key) return;
-      try { window.localStorage.setItem('xtreamlytv.skipintro.' + key, JSON.stringify({ s: Math.floor(start), e: Math.floor(end) })); } catch (e) {}
+      try { window.localStorage.setItem('xtreamlytv.skipintro.' + key, JSON.stringify({ s: Math.floor(start) })); } catch (e) {}
     },
 
     updateSkipIntroButton: function (video) {
@@ -2959,7 +2960,7 @@
       if (this.playerType === 'live' || !this.playerOpen) { btn.style.display = 'none'; this._skipBtnVisible = false; return; }
       var current = isFinite(video.currentTime) ? video.currentTime : 0;
       var mem = this.skipIntroMemoryFor();
-      var show = !!mem && current >= mem.s - 1 && current <= mem.e && !video.paused;
+      var show = !!mem && current >= mem.s && current <= mem.s + 120 && !video.paused;
       var was = this._skipBtnVisible;
       this._skipBtnVisible = show;
       btn.style.display = show ? 'block' : 'none';
@@ -2971,14 +2972,8 @@
       var video = document.getElementById('video');
       if (!video || this.playerType === 'live') return;
       var current = isFinite(video.currentTime) ? video.currentTime : 0;
-      var mem = this.skipIntroMemoryFor();
-      var dest;
-      if (mem && mem.e > current && current >= mem.s - 5) {
-        dest = mem.e;
-      } else {
-        dest = current + 90;
-        this.saveSkipIntroMemory(current, dest);
-      }
+      var dest = current + 90;
+      this.saveSkipIntroMemory(current);
       try { video.currentTime = dest; } catch (e) { return; }
       this.toast('Intro pulado');
       this.updatePlayerProgress(video);
