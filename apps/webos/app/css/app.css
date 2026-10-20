@@ -3121,7 +3121,7 @@ html, body { overflow:hidden; }
 .view { display:flex; flex-direction:column; }
 .view > .scroll-view, .view > .library-layout, .view > .loading, .view > .screen { flex:1 1 auto; min-height:0; height:auto; }
 .library-layout { min-height:0; }
-.library-layout > .category-list { min-height:0; max-height:100%; }
+.library-layout > .category-list { min-height:0; max-height:calc(100vh - 95px); }
 .library-browser { min-height:0; }
 .channel-grid, .poster-grid { min-height:0; }
 

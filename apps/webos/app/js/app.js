@@ -301,23 +301,42 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
-      // universal wheel fix v2: roda do controle rola o container interno sob o cursor
-      document.addEventListener('wheel', function (e) {
-        var t = e.target;
-        if (!t || !t.closest) return;
-        var box = t.closest('.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host');
-        if (!box) return;
-        var d = e.deltaY || 0;
-        if (e.deltaMode === 1) d *= 60;
-        else if (e.deltaMode === 2) d *= box.clientHeight;
-        d *= 2;
-        var max = box.scrollHeight - box.clientHeight;
-        var can = (d > 0 && box.scrollTop < max - 1) || (d < 0 && box.scrollTop > 0);
-        if (!can) return;
-        e.preventDefault();
-        e.stopPropagation();
-        box.scrollTop = Math.max(0, Math.min(max, box.scrollTop + d));
-      }, { passive: false, capture: true });
+      // universal wheel fix v3: roda rola o container interno sob o cursor, com suavizacao por frame
+      (function () {
+        var acc = 0, pending = false;
+        document.addEventListener('wheel', function (e) {
+          var t = e.target;
+          if (!t || !t.closest) return;
+          var box = t.closest('.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host');
+          if (!box) {
+            var lb = t.closest('.library-browser');
+            if (lb) box = lb.querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
+          }
+          if (!box) return;
+          var d = e.deltaY || 0;
+          if (e.deltaMode === 1) d *= 60;
+          else if (e.deltaMode === 2) d *= box.clientHeight;
+          d *= 2;
+          if (d > 480) d = 480;
+          if (d < -480) d = -480;
+          var max = box.scrollHeight - box.clientHeight;
+          var can = (d > 0 && (box.scrollTop + acc) < max - 1) || (d < 0 && (box.scrollTop + acc) > 0);
+          if (!can) return;
+          e.preventDefault();
+          e.stopPropagation();
+          acc += d;
+          var targetBox = box;
+          if (!pending) {
+            pending = true;
+            requestAnimationFrame(function () {
+              pending = false;
+              var m = targetBox.scrollHeight - targetBox.clientHeight;
+              targetBox.scrollTop = Math.max(0, Math.min(m, targetBox.scrollTop + acc));
+              acc = 0;
+            });
+          }
+        }, { passive: false, capture: true });
+      })();
       // provider scroll fix: rola a lista de providers junto com o foco do controle
       document.addEventListener('focusin', function (e) {
         var t = e.target;
