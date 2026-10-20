@@ -301,6 +301,14 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
+      // provider scroll fix: rola a lista de providers junto com o foco do controle
+      document.addEventListener('focusin', function (e) {
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var box = t.closest('.provider-manager, .provider-login-list');
+        if (!box) return;
+        try { t.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (err) {}
+      });
       if (window.location.search.indexOf('demo=1') >= 0) this.startDemo();
       else if (this.state.credentials) this.connectSaved();
       else this.renderLogin();
