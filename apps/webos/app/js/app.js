@@ -301,37 +301,54 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
-      // universal wheel fix v4: resolve o container pela POSICAO do cursor (elementFromPoint)
+      // universal wheel fix v5: resolucao em 3 etapas (target, cursor, foco) + painel de diagnostico
       (function () {
         var acc = 0, pending = false, lastBox = null;
-        document.addEventListener('wheel', function (e) {
-          var sel = '.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host';
-          var box = null;
-          var t = e.target;
-          if (t && t.closest) box = t.closest(sel);
-          if (!box && typeof document.elementFromPoint === 'function') {
-            var el = document.elementFromPoint(e.clientX, e.clientY);
-            if (el && el.closest) box = el.closest(sel);
-            if (!box && el && el.closest && el.closest('.library-browser')) box = el.closest('.library-browser').querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
+        var dbg = null, dbgTimer = null;
+        function show(msg) {
+          if (!dbg) {
+            dbg = document.createElement('div');
+            dbg.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483647;background:rgba(0,0,0,.85);color:#0f0;font:12px monospace;padding:6px 10px;border-radius:8px;white-space:pre;pointer-events:none;';
           }
-          if (!box && t && t.closest && t.closest('.library-browser')) box = t.closest('.library-browser').querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
-          if (!box) return;
+          if (!dbg.parentNode) document.body.appendChild(dbg);
+          dbg.textContent = msg;
+          if (dbgTimer) clearTimeout(dbgTimer);
+          dbgTimer = setTimeout(function () { if (dbg && dbg.parentNode) dbg.parentNode.removeChild(dbg); dbg = null; }, 5000);
+        }
+        function resolveBox(t) {
+          var sel = '.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host';
+          if (t && t.closest) {
+            var b = t.closest(sel);
+            if (b) return b;
+            if (t.closest('.library-browser')) return t.closest('.library-browser').querySelector('.channel-grid, .poster-grid, .virtual-grid-host');
+          }
+          return null;
+        }
+        document.addEventListener('wheel', function (e) {
+          var box = resolveBox(e.target);
+          var via = 'target';
+          if (!box && typeof document.elementFromPoint === 'function') {
+            box = resolveBox(document.elementFromPoint(e.clientX, e.clientY));
+            via = 'point';
+          }
+          if (!box) { box = resolveBox(document.activeElement); via = 'focus'; }
           var d = e.deltaY || 0;
-          if (!d) return;
+          if (!box) { show('roda: caixa NENHUMA d=' + d); return; }
+          if (!d) { show('roda: d=0'); return; }
           if (e.deltaMode === 1) d *= 60;
           else if (e.deltaMode === 2) d *= box.clientHeight;
           d *= 2;
           if (d > 480) d = 480;
           if (d < -480) d = -480;
           var max = box.scrollHeight - box.clientHeight;
-          if (max <= 0) return;
           var proj = box.scrollTop + acc;
           var can = (d > 0 && proj < max - 1) || (d < 0 && proj > 0);
-          if (!can) { acc = 0; return; }
+          if (!can) { acc = 0; show('roda: LIMITE top=' + Math.round(box.scrollTop) + '/' + Math.round(max)); return; }
           e.preventDefault();
           e.stopPropagation();
           acc += d;
           lastBox = box;
+          show('roda: via=' + via + ' caixa=' + String(box.className || box.id).split(' ')[0] + ' d=' + Math.round(d) + ' top=' + Math.round(box.scrollTop) + '/' + Math.round(max));
           if (!pending) {
             pending = true;
             requestAnimationFrame(function () {
