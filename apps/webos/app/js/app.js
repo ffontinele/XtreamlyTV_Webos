@@ -2506,6 +2506,7 @@
         '<div class="player-top"><div class="player-brand"><img class="brand-wordmark" src="assets/xtreamlytv-wordmark.svg" alt="XtreamlyTV"></div><div class="player-clock">' + formatTime(new Date()) + '</div></div>' +
         '<div class="player-bottom"><div id="playerTimeline" class="player-timeline"><span id="currentTime">0:00</span><div id="playerProgressTrack" class="player-progress"><i id="playerProgress"></i><b id="playerScrubber"></b></div><span id="durationTime">0:00</span><button id="goLiveButton" class="go-live-button" type="button">Go Live</button></div>' +
         '<div class="player-transport"><button id="rewindButton" type="button">−10</button><button id="playPauseButton" class="play-pause-button" type="button">Pause</button><button id="forwardButton" type="button">+30</button><button id="tracksButton" type="button" style="margin-left:10px;padding:5px 10px;background:#333;color:#6cf;border:1px solid #6cf;">CC/Áudio</button></div>' +
+        '<button id="skipIntroButton" class="skip-intro-button focusable" type="button" style="display:none;">Skip Intro</button>' +
         '<div class="player-info"><div id="playerArtwork">' + artwork + '</div><div><div id="playerTitle" class="player-channel">' + escapeHtml(type === 'episode' ? episodeTitle(item) : titleOf(item)) + '</div><div id="playerProgram" class="player-program">' + escapeHtml(this.mediaSubtitle(item, type)) + '</div><div id="playerDescription" class="player-program-description">' + escapeHtml(type === 'live' ? '' : descriptionOf(item)) + '</div></div>' +
         '<div class="player-hints">' + hints + '<br><span class="key">BACK</span> Exit player</div></div></div>';
       if (!this.playerHost) {
@@ -2544,6 +2545,11 @@
       document.getElementById('forwardButton').addEventListener('click', function () { self.seek(30); });
       document.getElementById('playPauseButton').addEventListener('click', function () { self.togglePlayback(); });
       document.getElementById('goLiveButton').addEventListener('click', function () { self.goToLive(); });
+      var skipBtn = document.getElementById('skipIntroButton');
+      if (skipBtn) {
+        skipBtn.addEventListener('click', function () { self.skipIntro(); });
+        skipBtn.addEventListener('keydown', function (e) { if (e.keyCode === 13 || e.keyCode === 32) { e.stopPropagation(); } });
+      }
       var progressTrack = document.getElementById('playerProgressTrack');
       function seekFromPointer(event) {
         var rect = progressTrack.getBoundingClientRect();
@@ -2655,6 +2661,7 @@
 
     onPlaybackProgress: function (video) {
       var current = isFinite(video.currentTime) ? video.currentTime : 0;
+      this.updateSkipIntroButton(video);
       var advanced = current > this.lastPlaybackTime + 0.05 || current < this.lastPlaybackTime;
       if (advanced) {
         this.lastPlaybackProgressAt = Date.now();
@@ -2923,6 +2930,51 @@
         current.classList.remove('overlay');
         self.overlayTimer = null;
       }, 4200);
+    },
+
+    skipIntroTargetFor: function () {
+      var key = null;
+      if (this.playerType === 'episode' && this.playerParent) key = idOf(this.playerParent, 'series');
+      else if (this.playerType === 'movie') key = idOf(this.playerMedia, 'movie');
+      if (!key) return null;
+      try {
+        var v = window.localStorage.getItem('xtreamlytv.skipintro.' + key);
+        return v ? Number(v) : null;
+      } catch (e) { return null; }
+    },
+
+    updateSkipIntroButton: function (video) {
+      var btn = document.getElementById('skipIntroButton');
+      if (!btn) return;
+      if (this.playerType === 'live' || !this.playerOpen) { btn.style.display = 'none'; this._skipBtnVisible = false; return; }
+      var current = isFinite(video.currentTime) ? video.currentTime : 0;
+      var target = this.skipIntroTargetFor();
+      var windowEnd = target ? Math.max(target, 60) : 120;
+      var show = current > 2 && current < windowEnd && !video.paused;
+      var was = this._skipBtnVisible;
+      this._skipBtnVisible = show;
+      btn.style.display = show ? 'block' : 'none';
+      if (show && !was) { try { btn.focus(); } catch (e) {} }
+      if (!show && was && document.activeElement === btn) { try { btn.blur(); } catch (e) {} }
+    },
+
+    skipIntro: function () {
+      var video = document.getElementById('video');
+      if (!video) return;
+      var current = isFinite(video.currentTime) ? video.currentTime : 0;
+      var target = this.skipIntroTargetFor();
+      var dest = target ? target : current + 90;
+      if (!isFinite(dest) || dest <= current) dest = current + 90;
+      try { video.currentTime = dest; } catch (e) { return; }
+      var key = null;
+      if (this.playerType === 'episode' && this.playerParent) key = idOf(this.playerParent, 'series');
+      else if (this.playerType === 'movie') key = idOf(this.playerMedia, 'movie');
+      if (key) { try { window.localStorage.setItem('xtreamlytv.skipintro.' + key, String(dest)); } catch (e) {} }
+      this.toast('Intro pulado');
+      this.updatePlayerProgress(video);
+      var btn = document.getElementById('skipIntroButton');
+      if (btn) btn.style.display = 'none';
+      this._skipBtnVisible = false;
     },
 
     toggleTracksPanel: function () {
