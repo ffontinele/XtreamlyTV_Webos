@@ -301,14 +301,16 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
-      // provider wheel fix: a roda do controle rola a lista interna de providers, nao a pagina
+      // universal wheel fix v2: roda do controle rola o container interno sob o cursor
       document.addEventListener('wheel', function (e) {
         var t = e.target;
-        var box = t && t.closest ? t.closest('.provider-manager, .provider-login-list') : null;
+        if (!t || !t.closest) return;
+        var box = t.closest('.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host');
         if (!box) return;
         var d = e.deltaY || 0;
-        if (e.deltaMode === 1) d *= 40;
+        if (e.deltaMode === 1) d *= 60;
         else if (e.deltaMode === 2) d *= box.clientHeight;
+        d *= 2;
         var max = box.scrollHeight - box.clientHeight;
         var can = (d > 0 && box.scrollTop < max - 1) || (d < 0 && box.scrollTop > 0);
         if (!can) return;
