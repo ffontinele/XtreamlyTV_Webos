@@ -301,20 +301,9 @@
       document.addEventListener('keydown', this.onGlobalKey.bind(this));
       document.addEventListener('focusin', this.updateMenuHint.bind(this));
       document.addEventListener('focusin', this.onNavigationFocus.bind(this));
-      // universal wheel fix v5: resolucao em 3 etapas (target, cursor, foco) + painel de diagnostico
+      // universal wheel fix v11: producao, sem painel de diagnostico
       (function () {
         var acc = 0, pending = false, lastBox = null;
-        var dbg = null, dbgTimer = null;
-        function show(msg) {
-          if (!dbg) {
-            dbg = document.createElement('div');
-            dbg.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483647;background:rgba(0,0,0,.85);color:#0f0;font:12px monospace;padding:6px 10px;border-radius:8px;white-space:pre;pointer-events:none;';
-          }
-          if (!dbg.parentNode) document.body.appendChild(dbg);
-          dbg.textContent = msg;
-          if (dbgTimer) clearTimeout(dbgTimer);
-          dbgTimer = setTimeout(function () { if (dbg && dbg.parentNode) dbg.parentNode.removeChild(dbg); dbg = null; }, 5000);
-        }
         function resolveBox(t) {
           var sel = '.provider-manager, .provider-login-list, .category-list, .channel-grid, .poster-grid, .virtual-grid-host';
           if (t && t.closest) {
@@ -324,37 +313,86 @@
           }
           return null;
         }
+        function realMax(box) {
+          var geo = box.scrollHeight - box.clientHeight;
+          var kids = 0;
+          var last = box.lastElementChild;
+          if (last && last.getBoundingClientRect) {
+            var br = box.getBoundingClientRect();
+            var lr = last.getBoundingClientRect();
+            kids = (lr.bottom - br.top) + box.scrollTop - box.clientHeight;
+          }
+          var m = Math.max(geo, kids);
+          return m > 2 ? m : 0;
+        }
         document.addEventListener('wheel', function (e) {
           var box = resolveBox(e.target);
-          var via = 'target';
-          if (!box && typeof document.elementFromPoint === 'function') {
-            box = resolveBox(document.elementFromPoint(e.clientX, e.clientY));
-            via = 'point';
-          }
-          if (!box) { box = resolveBox(document.activeElement); via = 'focus'; }
+          if (!box && typeof document.elementFromPoint === 'function') box = resolveBox(document.elementFromPoint(e.clientX, e.clientY));
+          if (!box) box = resolveBox(document.activeElement);
           var d = e.deltaY || 0;
-          if (!box) { show('roda: caixa NENHUMA d=' + d); return; }
-          if (!d) { show('roda: d=0'); return; }
+          if (!box || !d) return;
+          if (box.classList && (box.classList.contains('category-list') || box.classList.contains('poster-grid') || box.classList.contains('channel-grid') || box.classList.contains('virtual-grid-host'))) {
+            var isCat = box.classList.contains('category-list');
+            var focusables = Array.prototype.slice.call(box.querySelectorAll(isCat ? '.category-button' : '.focusable'));
+            if (!focusables.length) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var code = d > 0 ? 40 : 38;
+            var ae = document.activeElement;
+            if (!ae || !box.contains(ae)) {
+              var pick = focusables[0];
+              if (isCat) {
+                pick = box.querySelector('.category-button.active') || focusables[0];
+              } else {
+                var br2 = box.getBoundingClientRect();
+                for (var ci2 = 0; ci2 < focusables.length; ci2++) {
+                  var r2 = focusables[ci2].getBoundingClientRect();
+                  if (r2.bottom > br2.top + 20 && r2.top < br2.bottom - 20) { pick = focusables[ci2]; break; }
+                }
+              }
+              try { pick.focus({ preventScroll: true }); } catch (errF) { pick.focus(); }
+              ae = pick;
+            }
+            var ev = null;
+            try { ev = new KeyboardEvent('keydown', { keyCode: code, which: code, bubbles: true, cancelable: true }); } catch (errK) { ev = null; }
+            if (!ev) { try { ev = document.createEvent('Event'); ev.initEvent('keydown', true, true); } catch (errE) { ev = null; } }
+            if (ev) {
+              try { Object.defineProperty(ev, 'keyCode', { get: function () { return code; } }); } catch (err1) {}
+              try { Object.defineProperty(ev, 'which', { get: function () { return code; } }); } catch (err2) {}
+              (ae || box).dispatchEvent(ev);
+            }
+            return;
+          }
+          var max = realMax(box);
+          if (max <= 0) {
+            var wl = ['.view', '.scroll-view', '.library-browser', '.library-layout', '.main'];
+            var anc = box.parentElement, outer = null;
+            while (anc && anc !== document.documentElement) {
+              var cls = '.' + String(anc.className || '').split(' ')[0];
+              if (wl.indexOf(cls) >= 0 && anc.scrollHeight - anc.clientHeight > 0) { outer = anc; break; }
+              anc = anc.parentElement;
+            }
+            if (outer) { box = outer; max = realMax(box); }
+          }
+          if (max <= 0) return;
           if (e.deltaMode === 1) d *= 60;
           else if (e.deltaMode === 2) d *= box.clientHeight;
           d *= 2;
           if (d > 480) d = 480;
           if (d < -480) d = -480;
-          var max = box.scrollHeight - box.clientHeight;
           var proj = box.scrollTop + acc;
           var can = (d > 0 && proj < max - 1) || (d < 0 && proj > 0);
-          if (!can) { acc = 0; show('roda: LIMITE top=' + Math.round(box.scrollTop) + '/' + Math.round(max)); return; }
+          if (!can) { acc = 0; return; }
           e.preventDefault();
           e.stopPropagation();
           acc += d;
           lastBox = box;
-          show('roda: via=' + via + ' caixa=' + String(box.className || box.id).split(' ')[0] + ' d=' + Math.round(d) + ' top=' + Math.round(box.scrollTop) + '/' + Math.round(max));
           if (!pending) {
             pending = true;
             requestAnimationFrame(function () {
               pending = false;
               if (!lastBox) { acc = 0; return; }
-              var m = lastBox.scrollHeight - lastBox.clientHeight;
+              var m = realMax(lastBox);
               lastBox.scrollTop = Math.max(0, Math.min(m, lastBox.scrollTop + acc));
               acc = 0;
             });
